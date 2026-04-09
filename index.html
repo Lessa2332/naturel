@@ -4,171 +4,143 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#0f1f0f">
-    <title>Vinok AR · 2026 Edition</title>
+    <title>Vinok AR · Final Fix</title>
     <style>
         :root {
             --gold: #f3cf8a;
             --white: #ffffff;
-            --glass: rgba(255, 255, 255, 0.1);
-            --blur: blur(20px);
+            --glass: rgba(255, 255, 255, 0.15);
+            --blur: blur(25px);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             background: #000;
-            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             color: var(--white);
             height: 100vh;
             overflow: hidden;
+            position: fixed; /* Запобігає скролу на Android */
+            width: 100%;
         }
 
-        /* Екран завантаження/Старту */
-        .welcome-screen {
-            position: fixed;
-            inset: 0;
-            z-index: 100;
-            background: radial-gradient(circle at center, #1a3a1a, #000);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.8s cubic-bezier(0.86, 0, 0.07, 1);
-        }
-
-        .welcome-screen.fade-out { transform: translateY(-100%); }
-
-        .start-btn {
-            background: var(--white);
-            color: #000;
-            border: none;
-            padding: 20px 50px;
-            border-radius: 40px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            letter-spacing: 1px;
-            transition: 0.3s;
-        }
-
-        .start-btn:active { transform: scale(0.95); opacity: 0.8; }
-
-        /* AR Контейнер */
         .ar-viewport {
             position: relative;
-            width: 100%;
+            width: 100vw;
             height: 100vh;
+            background: #000;
         }
 
+        /* КОРЕКЦІЯ ВІДЕО: Щоб не було розтягнутим */
         #videoElement, #outputCanvas {
             position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
+            top: 50%;
+            left: 50%;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Важливо для правильних пропорцій */
+            transform: translate(-50%, -50%) scaleX(-1);
         }
 
-        /* UI Панель (2026 Style) */
+        /* UI ФІКС ДЛЯ SAMSUNG (Кнопки вище) */
         .bottom-nav {
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            padding: 30px 20px calc(30px + env(safe-area-inset-bottom));
-            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-            z-index: 10;
+            /* Збільшений відступ знизу для Samsung A-серії */
+            padding: 20px 20px calc(60px + env(safe-area-inset-bottom));
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 40%, transparent);
+            z-index: 100;
         }
 
         .flower-scroll {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             overflow-x: auto;
-            padding: 10px 0;
+            padding: 15px 5px;
             scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
         }
         .flower-scroll::-webkit-scrollbar { display: none; }
 
         .item-card {
-            min-width: 70px; height: 70px;
+            min-width: 65px; height: 65px;
             background: var(--glass);
             backdrop-filter: var(--blur);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.8rem;
+            transition: 0.2s;
         }
-
-        .item-card:active { background: var(--gold); transform: scale(0.9); }
 
         .action-bar {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
             align-items: center;
-            margin-top: 25px;
+            margin-top: 20px;
         }
 
         .shutter {
-            width: 75px; height: 75px;
+            width: 80px; height: 80px;
             border-radius: 50%;
             border: 4px solid var(--white);
-            background: transparent;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 4px;
             cursor: pointer;
         }
         .shutter-inner {
-            width: 85%; height: 85%;
+            width: 100%; height: 100%;
             background: var(--white);
             border-radius: 50%;
-            transition: 0.2s;
         }
-        .shutter:active .shutter-inner { transform: scale(0.9); }
 
         .btn-utility {
             width: 50px; height: 50px;
-            border-radius: 18px;
+            border-radius: 50%;
             background: var(--glass);
             backdrop-filter: var(--blur);
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
             color: var(--white);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
+            font-size: 1.2rem;
         }
 
         .status-pill {
             position: absolute;
-            top: env(safe-area-inset-top);
+            top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            color: var(--gold);
-            border: 1px solid rgba(243, 207, 138, 0.3);
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 30px;
+            z-index: 10;
+            border: 1px solid var(--gold);
         }
+
+        .welcome-screen {
+            position: fixed; inset: 0; z-index: 1000;
+            background: #0f1f0f; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .welcome-screen.hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="welcome-screen" id="welcome">
-    <h2 style="margin-bottom: 20px; letter-spacing: 4px;">VINOK AR</h2>
-    <button class="start-btn" id="startBtn">УВІЙТИ В ДОСВІД</button>
+    <h1 style="color:var(--gold); margin-bottom: 30px;">VINOK AR</h1>
+    <button class="btn-utility" id="startBtn" style="width: auto; padding: 15px 40px; border-radius: 30px;">ПОЧАТИ</button>
 </div>
 
 <div class="ar-viewport">
     <video id="videoElement" autoplay playsinline muted></video>
     <canvas id="outputCanvas"></canvas>
     
-    <div class="status-pill" id="status">Знайдіть своє обличчя</div>
+    <div class="status-pill" id="status">Наведіть камеру на обличчя</div>
 
     <div class="bottom-nav">
         <div class="flower-scroll" id="flowerScroll"></div>
-        
         <div class="action-bar">
             <button class="btn-utility" onclick="resetWreath()">✕</button>
             <div class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></div>
@@ -183,18 +155,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
-    let state = {
-        selected: [],
-        smileScore: 0,
-        isMusicPlaying: false
-    };
-
+    let state = { selected: [], smileScore: 0 };
     const flowers = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀"];
     const canvas = document.getElementById('outputCanvas');
     const ctx = canvas.getContext('2d');
-    const music = document.getElementById('fonMusic');
+    const video = document.getElementById('videoElement');
 
-    // Ініціалізація UI
     function initUI() {
         const scroll = document.getElementById('flowerScroll');
         flowers.forEach(f => {
@@ -203,29 +169,30 @@
             card.textContent = f;
             card.onclick = () => {
                 if(state.selected.length < 7) {
-                    state.selected.push({ emoji: f, offset: Math.random() * 20 });
-                    if(navigator.vibrate) navigator.vibrate(40);
+                    state.selected.push({ emoji: f, scale: 0 });
+                    if(navigator.vibrate) navigator.vibrate(30);
                 }
             };
             scroll.appendChild(card);
         });
     }
 
-    // AR Логіка
     async function startAR() {
         const faceMesh = new FaceMesh({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
         });
-
-        faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.5 });
+        faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6 });
         faceMesh.onResults(onResults);
 
-        const camera = new Camera(document.getElementById('videoElement'), {
+        const camera = new Camera(video, {
             onFrame: async () => {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                await faceMesh.send({image: document.getElementById('videoElement')});
-            }
+                // Синхронізація розміру канвасу з відеопотоком
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                await faceMesh.send({image: video});
+            },
+            width: 1280,
+            height: 720
         });
         camera.start();
     }
@@ -236,14 +203,12 @@
         ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
         if (results.multiFaceLandmarks?.[0]) {
-            const landmarks = results.multiFaceLandmarks[0];
             document.getElementById('status').style.display = 'none';
+            const landmarks = results.multiFaceLandmarks[0];
             
-            // Детекція посмішки (відстань між кутиками губ)
-            const lipLeft = landmarks[61];
-            const lipRight = landmarks[291];
-            const dist = Math.hypot(lipLeft.x - lipRight.x, lipLeft.y - lipRight.y);
-            state.smileScore = Math.max(0, (dist - 0.07) * 10); // Спрощена логіка
+            // Детекція посмішки
+            const dist = Math.hypot(landmarks[61].x - landmarks[291].x, landmarks[61].y - landmarks[291].y);
+            state.smileScore = Math.max(0, (dist - 0.07) * 10);
 
             drawWreath(landmarks);
         } else {
@@ -253,10 +218,25 @@
     }
 
     function drawWreath(landmarks) {
-        const left = landmarks[234], right = landmarks[454], top = landmarks[10];
-        const p0 = { x: left.x * canvas.width, y: left.y * canvas.height };
-        const p2 = { x: right.x * canvas.width, y: right.y * canvas.height };
-        const p1 = { x: (p0.x + p2.x)/2, y: (top.y * canvas.height) - (Math.abs(p2.x - p0.x) * 0.4) };
+        // ВИПРАВЛЕННЯ ТОЧОК: беремо точки лоба, а не скронь
+        const leftForehead = landmarks[103]; // Над лівою бровою
+        const rightForehead = landmarks[332]; // Над правою бровою
+        const topOfHead = landmarks[10]; // Центр верхньої лінії лоба
+
+        const p0 = { x: leftForehead.x * canvas.width, y: leftForehead.y * canvas.height };
+        const p2 = { x: rightForehead.x * canvas.width, y: rightForehead.y * canvas.height };
+        
+        const headWidth = Math.abs(p2.x - p0.x);
+        
+        // Піднімаємо дугу ще вище відносно верху лоба
+        const p1 = { 
+            x: (p0.x + p2.x) / 2, 
+            y: (topOfHead.y * canvas.height) - (headWidth * 0.7) 
+        };
+
+        // Трішки піднімаємо бокові точки, щоб не були на вухах
+        p0.y -= headWidth * 0.2;
+        p2.y -= headWidth * 0.2;
 
         state.selected.forEach((f, i) => {
             const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
@@ -264,17 +244,13 @@
             const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
             const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
 
-            // Ефект 2026: Квіти пульсують від посмішки
-            const smileBoost = 1 + (state.smileScore * 0.5);
-            const size = (Math.abs(p2.x - p0.x) * 0.18) * smileBoost;
+            if(f.scale < 1) f.scale += 0.1;
+            const size = (headWidth * 0.25) * f.scale * (1 + state.smileScore * 0.3);
 
             ctx.save();
             ctx.translate(x, y);
-            
-            // Тінь (Ambient Occlusion)
             ctx.shadowBlur = 15;
             ctx.shadowColor = 'rgba(0,0,0,0.5)';
-            
             ctx.font = `${size}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -283,18 +259,17 @@
         });
     }
 
-    // Службові функції
     window.resetWreath = () => state.selected = [];
-
     window.capturePhoto = () => {
-        const data = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = data; a.download = 'ar-vinok.png'; a.click();
+        const link = document.createElement('a');
+        link.download = 'vinok.png';
+        link.href = canvas.toDataURL();
+        link.click();
     };
 
     document.getElementById('startBtn').onclick = () => {
-        document.getElementById('welcome').classList.add('fade-out');
-        music.play();
+        document.getElementById('welcome').classList.add('hidden');
+        document.getElementById('fonMusic').play();
         startAR();
     };
 
