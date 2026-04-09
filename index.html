@@ -6,6 +6,12 @@
     <meta name="theme-color" content="#1a3a1a">
     <title>Вінок · 7 квітів</title>
     <style>
+        :root {
+            --gold: #eabd6a;
+            --dark-green: #0f1f0f;
+            --panel-bg: rgba(44, 58, 40, 0.85);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,273 +20,218 @@
         }
 
         body {
-            background: #0f1f0f;
-            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--dark-green);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            color: white;
+            overflow: hidden;
         }
 
+        /* Контейнер додатку */
         .app {
             width: 100%;
             max-width: 500px;
+            height: 100vh;
             background: #1a2a1a;
-            border-radius: 32px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            position: relative;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
+        /* Камера */
         .camera-box {
             position: relative;
-            width: 100%;
-            aspect-ratio: 3 / 4;
+            flex-grow: 1;
             background: #000;
             overflow: hidden;
         }
 
         #videoElement, #outputCanvas {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scaleX(-1);
+            min-width: 100%;
+            min-height: 100%;
             object-fit: cover;
-            transform: scaleX(-1);
         }
 
-        #outputCanvas {
-            pointer-events: none;
-        }
-
-        .flower-panel {
-            background: #2c3a28cc;
-            backdrop-filter: blur(8px);
-            padding: 12px 0;
-            overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: thin;
-            border-top: 1px solid #e9c47e66;
-            border-bottom: 1px solid #e9c47e66;
-        }
-
-        .flower-strip {
-            display: inline-flex;
-            gap: 12px;
-            padding: 0 16px;
-        }
-
-        .flower-card {
-            font-size: 2.4rem;
-            background: #fff2df;
-            width: 70px;
-            height: 70px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-            cursor: pointer;
-            transition: 0.07s linear;
-            border: 2px solid transparent;
-        }
-
-        .flower-card:active {
-            transform: scale(0.94);
-        }
-
-        .flower-card.selected {
-            border-color: #f5b042;
-            box-shadow: 0 0 0 3px #ffd966;
-            transform: scale(1.02);
-        }
-
-        .selected-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            padding: 12px 16px;
-            background: #1f2e1acc;
-            justify-content: center;
-            min-height: 70px;
-        }
-
-        .mini-flower {
-            background: #fff0cf;
-            border-radius: 60px;
-            padding: 6px 14px;
-            font-size: 1.6rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px black;
-            transition: 0.05s linear;
-        }
-
-        .mini-flower:active {
-            transform: scale(0.94);
-            background: #ffe0b5;
-        }
-
-        .mini-flower span {
-            font-size: 1rem;
-            font-weight: bold;
-            color: #b45f2b;
+        /* Інтерфейс поверх камери */
+        .overlay-ui {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .counter {
             text-align: center;
-            font-size: 1rem;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 10px;
             font-weight: bold;
-            padding: 8px;
-            background: #2b4225;
-            color: #ffecb3;
-            border-radius: 40px;
-            margin: 8px 16px;
         }
 
-        .photo-button-container {
-            padding: 16px;
-            text-align: center;
+        /* Панель вибору */
+        .flower-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(15px);
+            padding: 15px 0;
+            border-top: 1px solid rgba(234, 189, 106, 0.3);
+        }
+
+        .flower-strip {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 0 20px;
+            scrollbar-width: none;
+        }
+        .flower-strip::-webkit-scrollbar { display: none; }
+
+        .flower-card {
+            min-width: 65px;
+            height: 65px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .flower-card:active { transform: scale(0.8); }
+        .flower-card.selected { border: 3px solid var(--gold); }
+
+        /* Кнопка фото */
+        .controls {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            align-items: center;
         }
 
         #takePhotoBtn {
-            background: linear-gradient(145deg, #c47d3a, #e09d52);
-            border: none;
-            width: 90%;
-            padding: 16px;
-            border-radius: 60px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 1px 2px black;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 5px solid white;
+            background: rgba(255,255,255,0.2);
             cursor: pointer;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.4);
-            transition: 0.08s linear;
-            opacity: 0.5;
-            transform: scale(0.96);
+            position: relative;
+            transition: 0.3s;
+            opacity: 0.4;
             pointer-events: none;
         }
 
         #takePhotoBtn.active {
             opacity: 1;
-            transform: scale(1);
             pointer-events: auto;
-            background: linear-gradient(145deg, #e6963c, #ffb86b);
+            background: white;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
         }
 
-        #takePhotoBtn:active {
-            transform: scale(0.97);
+        #takePhotoBtn::after {
+            content: "";
+            position: absolute;
+            inset: 5px;
+            border-radius: 50%;
+            border: 2px solid #000;
         }
 
-        .reset-btn {
-            background: #3a5233;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            color: #fff0cf;
-            font-weight: bold;
-            font-size: 0.9rem;
-            margin: 4px 16px 12px auto;
+        .btn-round {
+            background: var(--panel-bg);
+            border: 1px solid var(--gold);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            width: fit-content;
         }
 
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1e2a1ae6;
-            backdrop-filter: blur(12px);
-            padding: 12px 24px;
-            border-radius: 60px;
-            color: #ffefb9;
-            font-weight: 600;
-            z-index: 200;
-            pointer-events: none;
-            font-size: 0.9rem;
-            border: 1px solid #eabd6a;
-        }
-
+        /* Стартовий екран */
         .start-overlay {
             position: fixed;
             inset: 0;
-            background: #0f1e0f;
+            background: radial-gradient(circle at center, #1a3a1a, #050a05);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 300;
-            text-align: center;
-            padding: 24px;
+            z-index: 100;
+            transition: 0.5s;
         }
 
         .start-btn {
-            background: #e2b45c;
+            background: var(--gold);
+            color: #241a05;
             border: none;
-            padding: 16px 32px;
-            border-radius: 80px;
-            font-size: 1.3rem;
+            padding: 18px 40px;
+            border-radius: 40px;
+            font-size: 1.2rem;
             font-weight: bold;
-            margin-top: 20px;
             cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            margin-top: 30px;
         }
 
-        .hidden {
-            display: none !important;
-        }
-
-        @media (max-width: 500px) {
-            .flower-card {
-                width: 60px;
-                height: 60px;
-                font-size: 2rem;
-            }
-            .mini-flower {
-                font-size: 1.3rem;
-                padding: 4px 10px;
-            }
-            #takePhotoBtn {
-                font-size: 1.2rem;
-                padding: 14px;
-            }
+        .hidden { opacity: 0; pointer-events: none; }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 1000;
+            border: 1px solid var(--gold);
         }
     </style>
 </head>
 <body>
 
+<audio id="bgMusic" src="fon.mp3" loop></audio>
+
 <div class="start-overlay" id="startOverlay">
-    <h2 style="color:#ffefb0;">🌾 Лісовий вінок</h2>
-    <p style="color:#e6dc9e; margin:12px 0;">Оберіть 7 квітів і зробіть магічне фото</p>
+    <h1 style="color:var(--gold); font-size: 2.5rem; margin-bottom: 10px;">ВІНОК</h1>
+    <p style="opacity: 0.8;">Українська AR-магія</p>
     <button class="start-btn" id="startBtn">Почати ✨</button>
-    <div style="margin-top:20px; font-size:12px; opacity:0.7;">📷 Дозвольте доступ до камери</div>
 </div>
 
-<div class="app hidden" id="appContainer">
+<div class="app">
     <div class="camera-box">
         <video id="videoElement" autoplay playsinline muted></video>
         <canvas id="outputCanvas"></canvas>
     </div>
 
-    <div class="counter" id="flowerCounter">🌸 0 / 7 квітів</div>
+    <div class="overlay-ui">
+        <div class="counter" id="flowerCounter">Оберіть 7 квітів</div>
+        
+        <div class="flower-panel">
+            <div class="flower-strip" id="flowerStrip"></div>
+        </div>
 
-    <div class="flower-panel">
-        <div class="flower-strip" id="flowerStrip"></div>
-    </div>
-
-    <div class="selected-list" id="selectedList"></div>
-
-    <div style="display: flex; justify-content: flex-end; padding: 0 16px;">
-        <button class="reset-btn" id="resetBtn">🍂 Скинути всі</button>
-    </div>
-
-    <div class="photo-button-container">
-        <button id="takePhotoBtn">📸 Зробити фото</button>
+        <div class="controls">
+            <button class="btn-round" id="resetBtn" title="Скинути">↺</button>
+            <button id="takePhotoBtn"></button>
+            <button class="btn-round" id="shareBtn" title="Поділитися">↗</button>
+        </div>
     </div>
 </div>
 
@@ -288,349 +239,163 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
-    (function(){
-        const MAX_FLOWERS = 7;
-        const FLOWER_SET = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀","🌸","🌻","🌼","💮","🌺","🌷","🌹","🌼","🌸","🌻"];
-        
-        // Стан
-        let state = {
-            selected: [],
-            faceLandmarks: null,
-            isARSession: false,
-            cameraFacing: 'user',
-            faceMesh: null,
-            camera: null,
-        };
-        
-        // DOM
-        const dom = {
-            startOverlay: document.getElementById('startOverlay'),
-            appContainer: document.getElementById('appContainer'),
-            startBtn: document.getElementById('startBtn'),
-            video: document.getElementById('videoElement'),
-            canvas: document.getElementById('outputCanvas'),
-            flowerCounter: document.getElementById('flowerCounter'),
-            resetBtn: document.getElementById('resetBtn'),
-            takePhotoBtn: document.getElementById('takePhotoBtn'),
-            selectedList: document.getElementById('selectedList'),
-            flowerStrip: document.getElementById('flowerStrip'),
-        };
-        
-        let canvasCtx = null;
-        let animationFrame = null;
-        
-        // UI функції
-        function showToast(msg, duration = 2000) {
-            let old = document.querySelector('.toast');
-            if(old) old.remove();
-            let toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = msg;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 200);
-            }, duration);
-        }
-        
-        function updateUI() {
-            const count = state.selected.length;
-            dom.flowerCounter.textContent = `🌸 ${count} / ${MAX_FLOWERS} квітів`;
-            dom.takePhotoBtn.classList.toggle('active', count === MAX_FLOWERS);
-            
-            dom.selectedList.innerHTML = '';
-            if(state.selected.length === 0) {
-                let placeholder = document.createElement('div');
-                placeholder.textContent = '✨ торкніться квітки, щоб додати ✨';
-                placeholder.style.cssText = 'font-size:0.8rem; opacity:0.7; color:#e6dbaa; padding:8px';
-                dom.selectedList.appendChild(placeholder);
-            } else {
-                state.selected.forEach((flower, idx) => {
-                    const chip = document.createElement('div');
-                    chip.className = 'mini-flower';
-                    chip.innerHTML = `${flower} <span>✕</span>`;
-                    chip.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        state.selected.splice(idx, 1);
-                        updateUI();
-                        highlightSelectedFlowers();
-                        playSoftBeep();
-                    });
-                    dom.selectedList.appendChild(chip);
-                });
-            }
-            highlightSelectedFlowers();
-        }
-        
-        function highlightSelectedFlowers() {
-            document.querySelectorAll('.flower-card').forEach(card => {
-                const flower = card.dataset.flower;
-                card.classList.toggle('selected', state.selected.includes(flower));
-            });
-        }
-        
-        function addFlower(flower) {
-            if(state.selected.length >= MAX_FLOWERS) {
-                showToast(`🌿 Вінок вже має ${MAX_FLOWERS} квітів!`);
-                return false;
-            }
-            if(state.selected.includes(flower)) {
-                showToast('🍃 Ця квітка вже у вінку');
-                return false;
-            }
-            state.selected.push(flower);
-            updateUI();
-            playSoftBeep();
-            return true;
-        }
-        
-        function resetAll() {
-            if(state.selected.length === 0) return;
-            state.selected = [];
-            updateUI();
-            showToast('🍂 Вінок очищено');
-            playSoftBeep();
-        }
-        
-        // Звук
-        let audioCtx = null;
-        function initAudioContext() {
-            if(audioCtx) return;
-            try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            } catch(e) {}
-        }
-        function playSoftBeep() {
-            if(!audioCtx) return;
-            try {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.frequency.value = 780;
-                gain.gain.value = 0.08;
-                osc.start();
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
-                osc.stop(audioCtx.currentTime + 0.15);
-                if(audioCtx.state === 'suspended') audioCtx.resume();
-            } catch(e) {}
-        }
-        
-        // ---------- ОНОВЛЕНА ЛОГІКА ВІНКА (висока дуга над очима) ----------
-        function getWreathControlPoints(landmarks, canvasW, canvasH) {
-            if(!landmarks) return null;
-            // Ключові точки: ліва скроня (234), права скроня (454), верх чола (10)
-            const left = landmarks[234];
-            const right = landmarks[454];
-            const top = landmarks[10];
-            if(!left || !right || !top) return null;
-            
-            let p0 = { x: left.x * canvasW, y: left.y * canvasH };
-            let p2 = { x: right.x * canvasW, y: right.y * canvasH };
-            
-            const headWidth = Math.abs(p2.x - p0.x);
-            const arcHeight = headWidth * 0.35;  // 35% ширини = гарна дуга
-            const centerX = (p0.x + p2.x) / 2;
-            const baselineY = Math.min(p0.y, p2.y);
-            const apexY = baselineY - arcHeight;
-            let p1 = { x: centerX, y: apexY };
-            
-            // Додаткова корекція при близькому обличчі
-            const faceScale = Math.min(1.0, headWidth / 300);
-            p1.y -= (1 - faceScale) * 20;
-            
-            // Трохи звужуємо базу, щоб квітки не звисали
-            const narrow = 0.95;
-            p0.x = centerX - (centerX - p0.x) * narrow;
-            p2.x = centerX + (p2.x - centerX) * narrow;
-            
-            return { p0, p1, p2 };
-        }
-        
-        function bezierPoint(p0, p1, p2, t) {
-            const mt = 1 - t;
-            return {
-                x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
-                y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y
+    const MAX_FLOWERS = 7;
+    const FLOWER_SET = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀"];
+    
+    let state = {
+        selected: [],
+        faceLandmarks: null,
+        faceMesh: null,
+        camera: null,
+        isCapturing: false
+    };
+
+    const dom = {
+        video: document.getElementById('videoElement'),
+        canvas: document.getElementById('outputCanvas'),
+        strip: document.getElementById('flowerStrip'),
+        counter: document.getElementById('flowerCounter'),
+        photoBtn: document.getElementById('takePhotoBtn'),
+        music: document.getElementById('bgMusic')
+    };
+
+    const ctx = dom.canvas.getContext('2d');
+
+    // Ініціалізація квіток
+    function initFlowers() {
+        FLOWER_SET.forEach(emoji => {
+            const el = document.createElement('div');
+            el.className = 'flower-card';
+            el.textContent = emoji;
+            el.onclick = () => {
+                if(state.selected.length < MAX_FLOWERS) {
+                    state.selected.push({emoji, scale: 0}); // Додаємо з нульовим масштабом для анімації
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    updateUI();
+                }
             };
-        }
+            dom.strip.appendChild(el);
+        });
+    }
+
+    function updateUI() {
+        const count = state.selected.length;
+        dom.counter.textContent = count === MAX_FLOWERS ? "Вінок готовий!" : `Зібрано: ${count} з ${MAX_FLOWERS}`;
+        dom.photoBtn.classList.toggle('active', count === MAX_FLOWERS);
+    }
+
+    // AR Малювання
+    function drawWreath(landmarks) {
+        if(!landmarks || state.selected.length === 0) return;
+
+        const left = landmarks[234];
+        const right = landmarks[454];
+        const top = landmarks[10];
+
+        const p0 = { x: left.x * dom.canvas.width, y: left.y * dom.canvas.height };
+        const p2 = { x: right.x * dom.canvas.width, y: right.y * dom.canvas.height };
         
-        function drawWreath(ctx, canvasW, canvasH, landmarks, flowers) {
-            if(!landmarks || flowers.length === 0) return;
-            const cp = getWreathControlPoints(landmarks, canvasW, canvasH);
-            if(!cp) return;
+        const width = Math.abs(p2.x - p0.x);
+        const arcHeight = width * 0.4;
+        const centerX = (p0.x + p2.x) / 2;
+        const p1 = { x: centerX, y: (Math.min(p0.y, p2.y)) - arcHeight };
+
+        state.selected.forEach((item, i) => {
+            const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
             
-            const { p0, p1, p2 } = cp;
-            const count = flowers.length;
+            // Плавна анімація появи
+            if(item.scale < 1) item.scale += 0.1;
+
+            const mt = 1 - t;
+            const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
+            const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
+
+            const size = (width * 0.15) * item.scale;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.font = `${size}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Тінь для реалістичності
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 10;
+            ctx.fillText(item.emoji, 0, 0);
+            ctx.restore();
+        });
+    }
+
+    async function setupCamera() {
+        state.faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        state.faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        state.faceMesh.onResults(results => {
+            ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
+            ctx.drawImage(dom.video, 0, 0, dom.canvas.width, dom.canvas.height);
             
-            for(let i = 0; i < count; i++) {
-                const t = (count === 1) ? 0.5 : i / (count - 1);
-                const point = bezierPoint(p0, p1, p2, t);
-                
-                const headWidth = Math.abs(p2.x - p0.x);
-                const baseSize = Math.min(56, Math.max(38, headWidth * 0.13));
-                
-                // Поворот по дотичній до кривої
-                const eps = 0.01;
-                const next = bezierPoint(p0, p1, p2, Math.min(1, t + eps));
-                const angle = Math.atan2(next.y - point.y, next.x - point.x);
-                
-                ctx.save();
-                ctx.translate(point.x, point.y);
-                ctx.rotate(angle);
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = "rgba(0,0,0,0.5)";
-                ctx.font = `${Math.floor(baseSize)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = "rgba(0,0,0,0.4)";
-                ctx.fillText(flowers[i], 2, 2);
-                ctx.fillStyle = "#fffdf5";
-                ctx.fillText(flowers[i], 0, 0);
-                ctx.restore();
-            }
-            ctx.shadowBlur = 0;
-        }
-        
-        // Рендер
-        function renderLoop() {
-            if(!canvasCtx || !dom.canvas || !dom.video.videoWidth) {
-                animationFrame = requestAnimationFrame(renderLoop);
-                return;
-            }
-            const w = dom.video.videoWidth;
-            const h = dom.video.videoHeight;
-            if(dom.canvas.width !== w || dom.canvas.height !== h) {
-                dom.canvas.width = w;
-                dom.canvas.height = h;
-            }
-            canvasCtx.drawImage(dom.video, 0, 0, w, h);
-            if(state.faceLandmarks && state.selected.length > 0) {
-                drawWreath(canvasCtx, w, h, state.faceLandmarks, state.selected);
-            }
-            animationFrame = requestAnimationFrame(renderLoop);
-        }
-        
-        // MediaPipe + камера
-        async function initCameraAndMesh() {
-            if(state.faceMesh) {
-                try { await state.faceMesh.close(); } catch(e) {}
-            }
-            if(state.camera) {
-                try { await state.camera.stop(); } catch(e) {}
-            }
-            
-            state.faceMesh = new FaceMesh({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-            });
-            state.faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.65,
-                minTrackingConfidence: 0.65
-            });
-            state.faceMesh.onResults((results) => {
-                state.faceLandmarks = results.multiFaceLandmarks?.[0] || null;
-            });
-            
-            state.camera = new Camera(dom.video, {
-                onFrame: async () => {
-                    if(state.isARSession && state.faceMesh) {
-                        await state.faceMesh.send({ image: dom.video });
-                    }
-                },
-                width: 640,
-                height: 480,
-                facingMode: state.cameraFacing
-            });
-            await state.camera.start();
-        }
-        
-        // Фото
-        function takePhoto() {
-            if(state.selected.length !== MAX_FLOWERS) {
-                showToast(`🌼 Додайте ще ${MAX_FLOWERS - state.selected.length} квітів`);
-                return;
-            }
-            if(!dom.canvas.width) {
-                showToast("⏳ Камера не готова");
-                return;
-            }
-            const w = dom.canvas.width, h = dom.canvas.height;
-            canvasCtx.drawImage(dom.video, 0, 0, w, h);
-            if(state.faceLandmarks) {
-                drawWreath(canvasCtx, w, h, state.faceLandmarks, state.selected);
-            } else {
-                showToast("👤 Не вдалося розпізнати обличчя, спробуйте ще раз");
-                return;
-            }
-            try {
-                let link = document.createElement('a');
-                link.download = `vinok_${Date.now()}.png`;
-                link.href = dom.canvas.toDataURL('image/png');
-                link.click();
-                showToast("📸 Фото збережено! 🌸");
-                playSoftBeep();
-            } catch(e) {
-                showToast("❌ Помилка збереження");
-            }
-        }
-        
-        // Панель квітів
-        function buildFlowerPanel() {
-            dom.flowerStrip.innerHTML = '';
-            FLOWER_SET.forEach(emoji => {
-                const card = document.createElement('div');
-                card.className = 'flower-card';
-                card.textContent = emoji;
-                card.dataset.flower = emoji;
-                card.addEventListener('click', () => addFlower(emoji));
-                dom.flowerStrip.appendChild(card);
-            });
-        }
-        
-        // Запуск
-        async function startApp() {
-            dom.startOverlay.classList.add('hidden');
-            dom.appContainer.classList.remove('hidden');
-            state.isARSession = true;
-            initAudioContext();
-            try {
-                await initCameraAndMesh();
-                canvasCtx = dom.canvas.getContext('2d');
-                renderLoop();
-                showToast("✨ Оберіть 7 квітів для віночка ✨");
-            } catch(err) {
-                console.error(err);
-                showToast("❌ Помилка доступу до камери. Перевірте дозволи.");
-                dom.startOverlay.classList.remove('hidden');
-                dom.appContainer.classList.add('hidden');
-            }
-        }
-        
-        function bindEvents() {
-            dom.startBtn.addEventListener('click', startApp);
-            dom.resetBtn.addEventListener('click', resetAll);
-            dom.takePhotoBtn.addEventListener('click', takePhoto);
-        }
-        
-        function init() {
-            buildFlowerPanel();
-            updateUI();
-            bindEvents();
-        }
-        
-        init();
-        
-        document.addEventListener('visibilitychange', () => {
-            if(document.hidden && animationFrame) {
-                cancelAnimationFrame(animationFrame);
-                animationFrame = null;
-            } else if(!document.hidden && state.isARSession && canvasCtx) {
-                if(!animationFrame) renderLoop();
+            if (results.multiFaceLandmarks?.[0]) {
+                state.faceLandmarks = results.multiFaceLandmarks[0];
+                drawWreath(state.faceLandmarks);
             }
         });
-    })();
+
+        state.camera = new Camera(dom.video, {
+            onFrame: async () => {
+                dom.canvas.width = dom.video.videoWidth;
+                dom.canvas.height = dom.video.videoHeight;
+                await state.faceMesh.send({image: dom.video});
+            },
+            width: 640,
+            height: 480
+        });
+        state.camera.start();
+    }
+
+    // Кнопки
+    document.getElementById('startBtn').onclick = () => {
+        document.getElementById('startOverlay').classList.add('hidden');
+        dom.music.play();
+        setupCamera();
+    };
+
+    document.getElementById('resetBtn').onclick = () => {
+        state.selected = [];
+        updateUI();
+    };
+
+    dom.photoBtn.onclick = () => {
+        const dataUrl = dom.canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'vinok.png';
+        link.href = dataUrl;
+        link.click();
+        if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    };
+
+    document.getElementById('shareBtn').onclick = async () => {
+        const blob = await (await fetch(dom.canvas.toDataURL())).blob();
+        const file = new File([blob], 'vinok.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'Мій вінок',
+                text: 'Подивіться, який вінок я сплела!'
+            });
+        } else {
+            alert("Ваш браузер не підтримує прямий репост, фото збережено!");
+            dom.photoBtn.click();
+        }
+    };
+
+    initFlowers();
 </script>
 </body>
 </html>
