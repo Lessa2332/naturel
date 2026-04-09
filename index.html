@@ -1,45 +1,49 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Чарівний віночок 🌸</title>
-    <!-- MindAR.js (face tracking) + Three.js -->
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.3/dist/mindar-face.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Для фото -->
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- MediaPipe FaceMesh -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         body {
-            overflow: hidden;
-            font-family: 'Quicksand', 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: #000;
+            font-family: 'Quicksand', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            overflow: hidden;
             touch-action: none;
         }
-        /* Контейнер для AR */
-        #mindar-container {
+        /* Контейнер камери на весь екран */
+        .camera-wrapper {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            overflow: hidden;
             z-index: 1;
         }
-        video, canvas {
+        video, #outputCanvas {
             position: absolute;
             top: 0;
             left: 0;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
+            transform: scaleX(-1);
         }
-        /* Панель квіток внизу */
+        #outputCanvas {
+            pointer-events: none;  /* щоб кліки йшли на кнопки */
+        }
+        /* Панель квіток (емодзі) внизу */
         .flower-panel {
             position: fixed;
             bottom: 20px;
@@ -47,32 +51,32 @@
             right: 0;
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
             padding: 10px 16px;
             background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(20px);
-            border-radius: 50px;
-            margin: 0 12px;
+            border-radius: 60px;
+            margin: 0 16px;
             z-index: 20;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
             border: 1px solid rgba(255,255,255,0.4);
         }
         .flower-emoji {
-            font-size: 42px;
+            font-size: 44px;
             cursor: pointer;
             transition: transform 0.1s ease;
             background: rgba(255,245,230,0.7);
             border-radius: 50px;
-            padding: 5px;
-            width: 60px;
+            padding: 6px;
+            width: 64px;
             text-align: center;
             backdrop-filter: blur(4px);
         }
         .flower-emoji:active {
             transform: scale(0.9);
         }
-        /* Кнопки */
+        /* Кнопки дій */
         .button-bar {
             position: fixed;
             bottom: 110px;
@@ -107,8 +111,8 @@
         }
         .counter {
             position: fixed;
-            top: 16px;
-            right: 16px;
+            top: 20px;
+            right: 20px;
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(8px);
             padding: 6px 14px;
@@ -119,7 +123,7 @@
             z-index: 20;
             font-family: monospace;
         }
-        /* Привітання */
+        /* Стартовий екран */
         .welcome {
             position: fixed;
             top: 0;
@@ -166,7 +170,11 @@
 </head>
 <body>
 
-<div id="mindar-container"></div>
+<div class="camera-wrapper">
+    <video id="videoElement" autoplay playsinline muted></video>
+    <canvas id="outputCanvas"></canvas>
+</div>
+
 <div class="flower-panel" id="flowerPanel">
     <div class="flower-emoji" data-flower="🌸">🌸</div>
     <div class="flower-emoji" data-flower="🌼">🌼</div>
@@ -176,11 +184,13 @@
     <div class="flower-emoji" data-flower="🌹">🌹</div>
     <div class="flower-emoji" data-flower="💮">💮</div>
 </div>
+
 <div class="button-bar">
     <button class="magic-btn" id="photoBtn">📸 Фото</button>
     <button class="magic-btn reset-btn" id="resetBtn">🌀 Скинути</button>
     <button class="magic-btn" id="saveBtn">💾 Зберегти</button>
 </div>
+
 <div class="counter" id="counter">🌸 0 / 7</div>
 
 <div class="welcome" id="welcomeScreen">
@@ -191,18 +201,18 @@
 
 <script>
     (function() {
-        // ---- Змінні ----
-        let currentFlowers = [];          // масив обраних квітів (емодзі)
-        let flowerSprites = [];            // масив Three.js спрайтів
-        let wreathGroup = null;            // група для віночка
-        let mindarFace = null;              // об'єкт MindAR
-        let threeRenderer = null;
-        let threeScene = null;
-        let threeCamera = null;
-        let isARStarted = false;
+        // ---- СТАН ----
+        let selectedFlowers = [];          // масив обраних квітів (емодзі)
+        let faceLandmarks = null;           // поточні орієнтири обличчя
+        let isARActive = false;
+        let lastDetectionTime = 0;
         const MAX_FLOWERS = 7;
-
+        const THROTTLE_MS = 100;            // обмеження частоти детекції (енергія)
+        
         // DOM елементи
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
         const flowerPanel = document.getElementById('flowerPanel');
         const resetBtn = document.getElementById('resetBtn');
         const photoBtn = document.getElementById('photoBtn');
@@ -210,102 +220,221 @@
         const counterDiv = document.getElementById('counter');
         const welcomeScreen = document.getElementById('welcomeScreen');
         const startBtn = document.getElementById('startBtn');
-
-        // Оновлення лічильника
+        
+        // MediaPipe
+        let faceMesh = null;
+        let camera = null;
+        let animationId = null;
+        
+        // ---- Допоміжні функції ----
         function updateCounter() {
-            counterDiv.innerHTML = `🌸 ${currentFlowers.length} / ${MAX_FLOWERS}`;
+            counterDiv.innerHTML = `🌸 ${selectedFlowers.length} / ${MAX_FLOWERS}`;
         }
-
-        // Повне скидання віночка
-        function resetWreath() {
-            currentFlowers = [];
-            updateCounter();
-            rebuildWreath();
-            if (navigator.vibrate) navigator.vibrate(50);
+        
+        // Оновлення візуального виділення квіток (немає класів, але для майбутнього)
+        function rebuildWreathOnCanvas() {
+            // Малювання віночка виконується в renderLoop, тут лише оновлюємо лічильник
         }
-
-        // Побудова віночка з поточних квітів
-        function rebuildWreath() {
-            if (!wreathGroup) return;
-            // Видаляємо старі спрайти
-            while(wreathGroup.children.length > 0) {
-                wreathGroup.remove(wreathGroup.children[0]);
-            }
-            flowerSprites = [];
-            const count = currentFlowers.length;
-            if (count === 0) return;
-
-            // Параметри півкола (радіус, висота)
-            const radius = 0.38;
-            const yBase = 0.22;    // над центром чола
-            const startAngle = -Math.PI / 2.2;
-            const endAngle = Math.PI / 2.2;
-
-            for (let i = 0; i < count; i++) {
-                const t = (count === 1) ? 0.5 : i / (count - 1);
-                const angle = startAngle + t * (endAngle - startAngle);
-                const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius * 0.5;
-                const y = yBase + Math.sin(angle) * 0.06;
-
-                const emoji = currentFlowers[i];
-                // Створюємо текстуру з емодзі на canvas
-                const canvas = document.createElement('canvas');
-                canvas.width = 128;
-                canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-                ctx.font = '96px "Segoe UI Emoji"';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = 'rgba(255,180,180,0.9)';
-                ctx.fillStyle = 'white';
-                ctx.fillText(emoji, 64, 64);
-                const texture = new THREE.CanvasTexture(canvas);
-                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-                const sprite = new THREE.Sprite(material);
-                sprite.scale.set(0.32, 0.32, 1);
-                sprite.position.set(x, y, z);
-                wreathGroup.add(sprite);
-                flowerSprites.push(sprite);
-            }
-        }
-
-        // Додати нову квітку
+        
         function addFlower(emoji) {
-            if (currentFlowers.length >= MAX_FLOWERS) {
+            if (selectedFlowers.length >= MAX_FLOWERS) {
                 if (navigator.vibrate) navigator.vibrate(200);
                 counterDiv.style.transform = 'scale(1.2)';
                 setTimeout(() => counterDiv.style.transform = '', 200);
                 return;
             }
-            currentFlowers.push(emoji);
+            if (selectedFlowers.includes(emoji)) return;
+            selectedFlowers.push(emoji);
             updateCounter();
-            rebuildWreath();
             if (navigator.vibrate) navigator.vibrate(30);
-            // легка анімація "магії" - додаємо блиск
         }
-
-        // Функція для знімка (через html2canvas або напряму з canvas)
-        async function takePhoto() {
-            if (!mindarFace || !threeRenderer) {
-                alert('Зачекайте, AR ще запускається...');
+        
+        function resetWreath() {
+            selectedFlowers = [];
+            updateCounter();
+            if (navigator.vibrate) navigator.vibrate(50);
+        }
+        
+        // ---- ГЕОМЕТРІЯ ВІНОЧКА (над чолом) ----
+        function getForeheadAnchor(landmarks) {
+            // Використовуємо точки брів та верхню частину перенісся для стабільного якоря
+            // Індекси: 10 – upper bridge of nose, 55 – ліва брова (центр), 285 – права брова
+            const leftBrow = landmarks[55];   // ліва брова центр
+            const rightBrow = landmarks[285]; // права брова центр
+            const noseBridge = landmarks[10]; // верхня частина носа
+            
+            if (!leftBrow || !rightBrow || !noseBridge) return null;
+            
+            // Центр між бровами
+            const centerX = (leftBrow.x + rightBrow.x) / 2;
+            const centerY = (leftBrow.y + rightBrow.y) / 2;
+            // Висота над бровами – приблизно на 20% відстані між бровами та носом
+            const browToNose = noseBridge.y - centerY;
+            const topY = centerY - browToNose * 0.7;  // трохи вище брів
+            
+            // Масштаб для розміру квіток (за відстанню між очима)
+            const leftEye = landmarks[33];
+            const rightEye = landmarks[263];
+            const eyeDist = Math.hypot(leftEye.x - rightEye.x, leftEye.y - rightEye.y);
+            
+            return { x: centerX, y: topY, scale: eyeDist };
+        }
+        
+        // Малюємо віночок на canvas (поверх відео)
+        function drawWreath() {
+            if (!faceLandmarks || selectedFlowers.length === 0) return;
+            
+            const anchor = getForeheadAnchor(faceLandmarks);
+            if (!anchor) return;
+            
+            const cx = anchor.x * canvas.width;
+            const cy = anchor.y * canvas.height;
+            const baseSize = Math.min(80, Math.max(40, anchor.scale * canvas.width * 0.18));
+            const flowerSize = baseSize;
+            const radius = baseSize * 0.9;   // радіус віночка
+            
+            const count = selectedFlowers.length;
+            if (count === 0) return;
+            
+            // Розташування по півколу (від -120° до +120°)
+            const startAngle = -120 * Math.PI / 180;
+            const endAngle = 120 * Math.PI / 180;
+            
+            for (let i = 0; i < count; i++) {
+                const t = (count === 1) ? 0.5 : i / (count - 1);
+                const angle = startAngle + t * (endAngle - startAngle);
+                const x = cx + Math.cos(angle) * radius;
+                const y = cy + Math.sin(angle) * radius * 0.8; // трохи витягнуто по горизонталі
+                
+                const emoji = selectedFlowers[i];
+                ctx.font = `${Math.floor(flowerSize)}px "Apple Color Emoji", "Segoe UI Emoji", system-ui`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Тінь для чарівності
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                // Легкий контур
+                ctx.fillStyle = 'rgba(40,25,10,0.6)';
+                ctx.fillText(emoji, x+2, y+2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(emoji, x, y);
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // ---- РЕНДЕР-ЦИКЛ (відео + віночок) ----
+        function renderFrame(timestamp) {
+            if (!isARActive) return;
+            
+            // Малюємо поточний кадр відео на canvas
+            if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
+                if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                }
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            }
+            
+            // Обмеження частоти оновлення детекції (економія батареї)
+            if (timestamp - lastDetectionTime > THROTTLE_MS) {
+                // FaceMesh викликає onResults асинхронно, тому просто передаємо кадр
+                if (faceMesh && video.videoWidth) {
+                    faceMesh.send({ image: video });
+                }
+                lastDetectionTime = timestamp;
+            }
+            
+            // Малюємо віночок, якщо є обличчя
+            if (faceLandmarks) {
+                drawWreath();
+            } else if (isARActive) {
+                // Підказка, якщо обличчя не видно
+                ctx.font = '18px system-ui';
+                ctx.fillStyle = 'rgba(255,240,210,0.9)';
+                ctx.shadowBlur = 0;
+                ctx.fillText('🌿 Покажіть обличчя камері', canvas.width/2, canvas.height/2);
+            }
+            
+            animationId = requestAnimationFrame(renderFrame);
+        }
+        
+        // ---- ІНІЦІАЛІЗАЦІЯ MEDIAPIPE ТА КАМЕРИ (надійний спосіб) ----
+        async function startAR() {
+            // Приховуємо привітання
+            welcomeScreen.style.opacity = '0';
+            setTimeout(() => welcomeScreen.style.display = 'none', 800);
+            
+            // 1. Запитуємо дозвіл на камеру явно (гарантує діалог)
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                // Зупиняємо, бо MediaPipe сам підключить камеру, але дозвіл вже отримано
+                stream.getTracks().forEach(track => track.stop());
+            } catch(err) {
+                console.error('Дозвіл камери відхилено', err);
+                alert('❌ Без доступу до камери магія неможлива. Дозвольте камеру в налаштуваннях браузера.');
                 return;
             }
-            // Отримуємо canvas з Three.js (на ньому вже відео + 3D)
-            const canvas = threeRenderer.domElement;
-            if (!canvas) return;
-            const dataURL = canvas.toDataURL('image/png');
+            
+            // 2. Налаштовуємо FaceMesh
+            faceMesh = new FaceMesh({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            });
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            faceMesh.onResults((results) => {
+                if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    faceLandmarks = results.multiFaceLandmarks[0];
+                } else {
+                    faceLandmarks = null;
+                }
+            });
+            
+            // 3. Запускаємо камеру через Camera utils (відео)
+            camera = new Camera(video, {
+                onFrame: async () => {
+                    if (faceMesh && isARActive) {
+                        await faceMesh.send({ image: video });
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+            await camera.start();
+            
+            isARActive = true;
+            renderFrame(0);
+        }
+        
+        // ---- ФОТО ТА ЗБЕРЕЖЕННЯ ----
+        function takePhoto() {
+            if (!canvas.width) {
+                alert('Зачекайте, камера ще не готова');
+                return;
+            }
+            // Оновлюємо кадр (перемальовуємо відео + віночок)
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                if (faceLandmarks) drawWreath();
+            }
             const link = document.createElement('a');
-            link.download = 'magic_wreath.png';
-            link.href = dataURL;
+            link.download = `magic_wreath_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
             link.click();
             if (navigator.vibrate) navigator.vibrate(100);
         }
-
+        
         async function saveToPhone() {
-            if (!mindarFace || !threeRenderer) return;
-            const canvas = threeRenderer.domElement;
+            if (!canvas.width) return;
+            // Оновлюємо кадр
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                if (faceLandmarks) drawWreath();
+            }
             canvas.toBlob(async (blob) => {
                 if (navigator.share) {
                     try {
@@ -314,6 +443,7 @@
                             files: [new File([blob], 'wreath.png', { type: 'image/png' })]
                         });
                     } catch(e) {
+                        // fallback
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -331,73 +461,14 @@
                 }
             }, 'image/png');
         }
-
-        // Ініціалізація AR за допомогою MindAR
-        async function startAR() {
-            // Сховати привітання
-            welcomeScreen.style.opacity = '0';
-            setTimeout(() => welcomeScreen.style.display = 'none', 800);
-
-            const container = document.getElementById('mindar-container');
-            // Створюємо MindAR Face instance
-            mindarFace = new MindAR.Face({
-                container: container,
-                autoStart: true,        // автоматично запускає камеру
-                uiScanning: false,      // не показуємо зайві рамки
-                uiLoading: false,
-                maxTrack: 1,
-                // Оптимізація енергії: зменшуємо частоту кадрів
-                targetFrameRate: 30,
-            });
-
-            // Чекаємо, поки MindAR завантажиться і запустить камеру
-            await mindarFace.start();
-            
-            // Отримуємо Three.js сцену з MindAR
-            const threejs = mindarFace.threejs;
-            threeRenderer = threejs.renderer;
-            threeScene = threejs.scene;
-            threeCamera = threejs.camera;
-            
-            // Створюємо групу для віночка, яка буде прив'язана до обличчя
-            wreathGroup = new THREE.Group();
-            threeScene.add(wreathGroup);
-            
-            // Оновлюємо позицію віночка відносно обличчя
-            mindarFace.faceAnchor.onUpdate(() => {
-                if (wreathGroup && mindarFace.faceAnchor.group) {
-                    // Отримуємо матрицю обличчя і трохи зміщуємо вгору
-                    const facePos = mindarFace.faceAnchor.group.position;
-                    wreathGroup.position.copy(facePos);
-                    wreathGroup.position.y += 0.16;  // піднімаємо над центром обличчя
-                    wreathGroup.position.z -= 0.05;
-                }
-            });
-            
-            // Анімація пульсації квіток
-            function animate() {
-                if (!flowerSprites) return;
-                const time = Date.now() * 0.008;
-                flowerSprites.forEach((sprite, idx) => {
-                    const scale = 0.32 + Math.sin(time + idx) * 0.04;
-                    sprite.scale.set(scale, scale, 1);
-                });
-                requestAnimationFrame(animate);
-            }
-            animate();
-            
-            isARStarted = true;
-            console.log('AR успішно запущено');
-        }
-
-        // Обробники UI
-        function bindUI() {
-            const flowers = document.querySelectorAll('.flower-emoji');
-            flowers.forEach(flower => {
-                flower.addEventListener('click', (e) => {
+        
+        // ---- ПОДІЇ UI ----
+        function bindEvents() {
+            document.querySelectorAll('.flower-emoji').forEach(el => {
+                el.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const emoji = flower.getAttribute('data-flower') || flower.innerText;
-                    addFlower(emoji);
+                    const flower = el.getAttribute('data-flower') || el.innerText;
+                    addFlower(flower);
                 });
             });
             resetBtn.addEventListener('click', resetWreath);
@@ -405,24 +476,30 @@
             saveBtn.addEventListener('click', saveToPhone);
             startBtn.addEventListener('click', () => {
                 startAR().catch(err => {
-                    console.error('Помилка запуску AR:', err);
-                    alert('Не вдалося отримати доступ до камери. Переконайтеся, що ви дали дозвіл.');
+                    console.error(err);
+                    alert('Помилка запуску камери. Переконайтеся, що сайт відкрито через HTTPS (GitHub Pages) і ви дозволили камеру.');
                 });
             });
         }
-
-        bindUI();
         
-        // Додатково: адаптація розміру
-        window.addEventListener('resize', () => {
-            if (threeRenderer && threeCamera) {
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-                threeRenderer.setSize(width, height);
-                threeCamera.aspect = width / height;
-                threeCamera.updateProjectionMatrix();
+        // Оптимізація енергії: зупиняємо рендер, коли вкладка неактивна
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                if (animationId) cancelAnimationFrame(animationId);
+                if (camera) camera.stop(); // зупиняємо камеру
+            } else {
+                if (isARActive && camera) camera.start();
+                if (isARActive) renderFrame(0);
             }
         });
+        
+        bindEvents();
+        updateCounter();
+        
+        // Попередження про HTTPS (якщо локально)
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            console.warn('Для роботи камери потрібен HTTPS. Задеплойте на GitHub Pages.');
+        }
     })();
 </script>
 </body>
