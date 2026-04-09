@@ -4,112 +4,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0f1f0f">
-    <title>Vinok AR · Червона Книга України</title>
+    <title>Vinok AR · Хранителі Флори</title>
     <style>
         :root {
-            --gold: #f3cf8a;
-            --white: #ffffff;
-            --ua-blue: #0057b7;
-            --ua-yellow: #ffd700;
-            --glass: rgba(255, 255, 255, 0.15);
-            --blur: blur(25px);
+            --gold: #f3cf8a; --white: #ffffff;
+            --ua-blue: rgba(0, 87, 183, 0.9);
+            --ua-yellow: rgba(255, 215, 0, 0.9);
+            --glass: rgba(255, 255, 255, 0.15); --blur: blur(25px);
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            background: #000;
-            font-family: 'SF Pro Display', system-ui, sans-serif;
-            color: var(--white);
-            height: 100vh;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-        }
-
-        .ar-viewport { position: relative; width: 100vw; height: 100vh; background: #000; }
-
-        #videoElement, #outputCanvas {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 100%; height: 100%;
-            object-fit: cover;
-            transform: translate(-50%, -50%) scaleX(-1);
-        }
-
-        /* Поп-ап з назвою квітки */
+        body { background: #000; font-family: system-ui, sans-serif; color: var(--white); height: 100vh; overflow: hidden; position: fixed; width: 100%; }
+        .ar-viewport { position: relative; width: 100vw; height: 100vh; }
+        #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); }
+        
         #flowerNamePopup {
-            position: fixed;
-            top: 15%; left: 50%;
-            transform: translateX(-50%) translateY(-20px);
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(15px);
-            padding: 12px 25px;
-            border-radius: 40px;
-            border: 1px solid var(--gold);
-            z-index: 1000;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            text-align: center;
+            position: fixed; top: 15%; left: 50%; transform: translateX(-50%) translateY(-20px);
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); padding: 15px 30px;
+            border-radius: 40px; border: 1px solid var(--gold); z-index: 1000; opacity: 0;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         #flowerNamePopup.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* Навігація для Samsung */
         .bottom-nav {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            padding: 20px 20px calc(60px + env(safe-area-inset-bottom));
-            background: linear-gradient(to top, rgba(0,0,0,0.9) 60%, transparent);
-            z-index: 100;
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 20px 20px calc(65px + env(safe-area-inset-bottom));
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 70%, transparent); z-index: 100;
         }
-
-        .flower-scroll {
-            display: flex; gap: 12px;
-            overflow-x: auto; padding: 10px 5px;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-        }
+        .flower-scroll { display: flex; gap: 12px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
         .flower-scroll::-webkit-scrollbar { display: none; }
-
         .item-card {
-            min-width: 75px; height: 85px;
-            background: var(--glass);
-            backdrop-filter: var(--blur);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            transition: 0.2s;
+            min-width: 85px; height: 95px; background: var(--glass); backdrop-filter: var(--blur);
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 22px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .item-card:active { transform: scale(0.9); background: var(--ua-yellow); }
-        .item-card img { width: 50px; height: 50px; object-fit: contain; margin-bottom: 5px; }
-        .item-card span { font-size: 8px; text-align: center; color: var(--gold); padding: 0 4px; }
-
+        .item-card img { width: 55px; height: 55px; object-fit: contain; }
+        .item-card span { font-size: 8px; color: var(--gold); text-align: center; margin-top: 5px; line-height: 1; }
+        
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
-        .shutter { width: 70px; height: 70px; border-radius: 50%; border: 4px solid var(--white); display: flex; align-items: center; justify-content: center; }
-        .shutter-inner { width: 85%; height: 85%; background: var(--white); border-radius: 50%; }
-        .btn-utility { width: 50px; height: 50px; border-radius: 15px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); color: var(--white); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .shutter { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; }
+        .shutter-inner { width: 85%; height: 85%; background: #fff; border-radius: 50%; }
+        .btn-utility { width: 50px; height: 50px; border-radius: 15px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; }
 
-        .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: radial-gradient(circle at center, #1a3a1a, #000); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
-        .welcome-screen.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; transition: 0.8s ease-in; }
-        .start-btn { background: var(--white); color: #000; border: none; padding: 18px 40px; border-radius: 40px; font-weight: 600; font-size: 1.1rem; margin-top: 30px; }
+        .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: radial-gradient(circle, #1a3a1a, #000); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .welcome-screen.hidden { transform: translateY(-100%); transition: 0.8s; }
+        .start-btn { background: #fff; color: #000; padding: 18px 45px; border-radius: 40px; font-weight: 600; margin-top: 30px; border: none; }
     </style>
 </head>
 <body>
 
 <div class="welcome-screen" id="welcome">
-    <h1 style="color:var(--gold); letter-spacing: 2px;">МАГІЧНИЙ ВІНОК</h1>
-    <p style="margin-top:15px; opacity:0.8;">Квіти Червоної Книги України 🇺🇦</p>
-    <button class="start-btn" id="startBtn">ПОЧАТИ ✨</button>
+    <h2 style="color:var(--gold)">МІСІЯ: ХРАНИТЕЛЬ</h2>
+    <p style="opacity:0.7">Сплети магічний оберіг України</p>
+    <button class="start-btn" id="startBtn">РОЗПОЧАТИ ✨</button>
 </div>
 
 <div class="ar-viewport">
     <video id="videoElement" autoplay playsinline muted></video>
     <canvas id="outputCanvas"></canvas>
-    
-    <div id="flowerNamePopup"><span id="popupText">Назва квітки</span></div>
+    <div id="flowerNamePopup"><span id="popupText" style="color:var(--gold); font-weight:bold;">Назва</span></div>
 
     <div class="bottom-nav">
         <div class="flower-scroll" id="flowerScroll"></div>
@@ -128,20 +80,20 @@
 
 <script>
     const redBookFlowers = [
-        { id: 1, src: 'flower_1.png', name: 'Підсніжник білосніжний' },
-        { id: 2, src: 'flower_2.png', name: 'Шафран Гейфелів' },
-        { id: 3, src: 'flower_3.png', name: 'Сон-трава велика' },
-        { id: 4, src: 'flower_4.png', name: 'Зозулині черевички' },
-        { id: 5, src: 'flower_5.png', name: 'Лілія лісова' },
-        { id: 6, src: 'flower_6.png', name: 'Любка дволиста' },
-        { id: 7, src: 'flower_7.png', name: 'Едельвейс (Білотка)' },
-        { id: 8, src: 'flower_8.png', name: 'Нарцис вузьколистий' },
-        { id: 9, src: 'flower_9.png', name: 'Тюльпан дібровний' },
-        { id: 10, src: 'flower_10.png', name: 'Горицвіт весняний' },
-        { id: 11, src: 'flower_11.png', name: 'Півники борові' },
-        { id: 12, src: 'flower_12.png', name: 'Дзвоники карпатські' },
-        { id: 13, src: 'flower_13.png', name: 'Тирлич безстебловий' },
-        { id: 14, src: 'flower_14.png', name: 'Айстра альпійська' },
+        { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
+        { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
+        { id: 3, src: 'flower_3.png', name: 'Тюльпан дібровний' },
+        { id: 4, src: 'flower_4.png', name: 'Горицвіт весняний' },
+        { id: 5, src: 'flower_5.png', name: 'Півники борові' },
+        { id: 6, src: 'flower_6.png', name: 'Сон-трава велика' },
+        { id: 7, src: 'flower_7.png', name: 'Дзвоники карпатські' },
+        { id: 8, src: 'flower_8.png', name: 'Тирлич безстебловий' },
+        { id: 9, src: 'flower_9.png', name: 'Айстра альпійська' },
+        { id: 10, src: 'flower_10.png', name: 'Фіалка кримська' },
+        { id: 11, src: 'flower_11.png', name: 'Підсніжник білосніжний' },
+        { id: 12, src: 'flower_12.png', name: 'Зозулині черевички' },
+        { id: 13, src: 'flower_13.png', name: 'Лілія лісова' },
+        { id: 14, src: 'flower_14.png', name: 'Едельвейс альпійський' },
         { id: 15, src: 'flower_15.png', name: 'Червона рута' }
     ];
 
@@ -151,11 +103,8 @@
     const ctx = canvas.getContext('2d');
     const video = document.getElementById('videoElement');
 
-    // Попереднє завантаження
     redBookFlowers.forEach(f => {
-        const img = new Image();
-        img.src = f.src;
-        loadedImages[f.id] = img;
+        const img = new Image(); img.src = f.src; loadedImages[f.id] = img;
     });
 
     function initUI() {
@@ -166,8 +115,8 @@
             card.innerHTML = `<img src="${f.src}"><span>${f.name.split(' ')[0]}</span>`;
             card.onclick = () => {
                 showName(f.name);
-                if(state.selected.length < 8) {
-                    state.selected.push({ id: f.id, scale: 0, rot: (Math.random()-0.5)*0.4 });
+                if(state.selected.length < 9) {
+                    state.selected.push({ id: f.id, scale: 0, rot: (Math.random()-0.5)*0.35 });
                     if(navigator.vibrate) navigator.vibrate(30);
                 }
             };
@@ -187,15 +136,10 @@
         const faceMesh = new FaceMesh({ locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
         faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6 });
         faceMesh.onResults(onResults);
-        const camera = new Camera(video, {
-            onFrame: async () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                await faceMesh.send({image: video});
-            },
-            width: 1280, height: 720
-        });
-        camera.start();
+        new Camera(video, { onFrame: async () => {
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            await faceMesh.send({image: video});
+        }, width: 1280, height: 720 }).start();
     }
 
     function onResults(results) {
@@ -208,45 +152,59 @@
             const dist = Math.hypot(landmarks[61].x - landmarks[291].x, landmarks[61].y - landmarks[291].y);
             state.smileScore = Math.max(0, (dist - 0.07) * 12);
 
-            if(state.smileScore > 1.5) drawRibbons(landmarks);
+            // 1. Стрічки ПІД квітами
+            if(state.smileScore > 1.2) drawDoubleRibbons(landmarks);
+            // 2. Вінок зверху
             drawWreath(landmarks);
         }
         ctx.restore();
     }
 
-    function drawRibbons(landmarks) {
+    function drawDoubleRibbons(landmarks) {
         const left = landmarks[103], right = landmarks[332];
         const time = Date.now() / 200;
-        const wave = Math.sin(time) * 25;
+        const wave = Math.sin(time) * 30;
 
         ctx.save();
-        ctx.lineWidth = canvas.width * 0.035;
-        ctx.lineCap = 'round';
-        ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = canvas.width * 0.045; // Пласка широка стрічка
+        ctx.lineCap = 'butt'; // Рівний край стрічки
 
-        // Синя стрічка
-        ctx.strokeStyle = '#0057b7';
-        ctx.beginPath();
-        ctx.moveTo(left.x * canvas.width, left.y * canvas.height);
-        ctx.bezierCurveTo(left.x * canvas.width - 80 + wave, left.y * canvas.height + 150, canvas.width * 0.1, canvas.height * 0.7, canvas.width * 0.05, canvas.height);
-        ctx.stroke();
+        const drawSingle = (point, color, offset, side) => {
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            const sx = point.x * canvas.width + offset;
+            const sy = point.y * canvas.height;
+            ctx.moveTo(sx, sy);
+            const targetX = side === 'left' ? canvas.width * 0.05 : canvas.width * 0.95;
+            ctx.bezierCurveTo(
+                sx + (side === 'left' ? -100 : 100) + wave, sy + 250,
+                targetX + (side === 'left' ? 50 : -50), canvas.height * 0.8,
+                targetX + offset, canvas.height
+            );
+            ctx.stroke();
+        };
 
-        // Жовта стрічка
-        ctx.strokeStyle = '#ffd700';
-        ctx.beginPath();
-        ctx.moveTo(right.x * canvas.width, right.y * canvas.height);
-        ctx.bezierCurveTo(right.x * canvas.width + 80 - wave, right.y * canvas.height + 150, canvas.width * 0.9, canvas.height * 0.7, canvas.width * 0.95, canvas.height);
-        ctx.stroke();
+        // Зліва: Синя та Жовта
+        drawSingle(left, 'var(--ua-blue)', -10, 'left');
+        drawSingle(left, 'var(--ua-yellow)', 15, 'left');
+
+        // Справа: Синя та Жовта
+        drawSingle(right, 'var(--ua-blue)', -15, 'right');
+        drawSingle(right, 'var(--ua-yellow)', 10, 'right');
+
         ctx.restore();
     }
 
     function drawWreath(landmarks) {
         const p0_raw = landmarks[103], p2_raw = landmarks[332], top = landmarks[10];
-        const p0 = { x: p0_raw.x * canvas.width, y: p0_raw.y * canvas.height };
-        const p2 = { x: p2_raw.x * canvas.width, y: p2_raw.y * canvas.height };
+        
+        // РОЗШИРЕННЯ: Виносимо краї вінка далі від голови
+        const p0 = { x: p0_raw.x * canvas.width + 40, y: p0_raw.y * canvas.height - 30 };
+        const p2 = { x: p2_raw.x * canvas.width - 40, y: p2_raw.y * canvas.height - 30 };
+        
         const headW = Math.abs(p2.x - p0.x);
-        const p1 = { x: (p0.x + p2.x)/2, y: (top.y * canvas.height) - (headW * 0.75) };
-        p0.y -= headW * 0.2; p2.y -= headW * 0.2;
+        // Купол вінка вище
+        const p1 = { x: (p0.x + p2.x)/2, y: (top.y * canvas.height) - (headW * 0.8) };
 
         state.selected.forEach((f, i) => {
             const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
@@ -255,7 +213,7 @@
             const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
 
             if(f.scale < 1) f.scale += 0.08;
-            const size = (headW * 0.35) * f.scale * (1 + state.smileScore * 0.25);
+            const size = (headW * 0.38) * f.scale * (1 + state.smileScore * 0.25);
             const img = loadedImages[f.id];
 
             if(img?.complete) {
@@ -271,23 +229,21 @@
     window.resetWreath = () => state.selected = [];
     window.capturePhoto = () => {
         const link = document.createElement('a');
-        link.download = 'vinok-red-book.png';
-        link.href = canvas.toDataURL();
-        link.click();
+        link.download = 'хранитель-флори.png';
+        link.href = canvas.toDataURL(); link.click();
     };
 
     document.getElementById('shareBtn').onclick = async () => {
         const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
         const file = new File([blob], 'vinok.png', {type: 'image/png'});
         if (navigator.canShare && navigator.canShare({files: [file]})) {
-            navigator.share({files: [file], title: 'Мій вінок 🇺🇦', text: 'Бережімо квіти Червоної Книги!'});
+            navigator.share({files: [file], title: 'Я — Хранитель Флори 🇺🇦', text: 'Мій вінок з Червоної книги України!'});
         } else { capturePhoto(); }
     };
 
     document.getElementById('startBtn').onclick = () => {
         document.getElementById('welcome').classList.add('hidden');
-        document.getElementById('fonMusic').play();
-        startAR();
+        document.getElementById('fonMusic').play(); startAR();
     };
     initUI();
 </script>
