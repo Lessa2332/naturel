@@ -294,14 +294,17 @@
         const MAX_FLOWERS = 7;
         const FLOWER_SET = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀","🌸","🌻","🌼","💮","🌺","🌷","🌹","🌼","🌸","🌻"];
         
-        // Три ключові точки, які гарантовано вище очей:
-        // 234 - ліва скроня (верхня частина), 10 - верх чола, 454 - права скроня
-        const LEFT_TEMPLE = 234;    // ліва верхня скроня
-        const FOREHEAD_TOP = 10;    // центральна точка чола (найвища)
-        const RIGHT_TEMPLE = 454;   // права верхня скроня
-        
-        // Додаткові точки для стабільності (якщо основні недоступні)
-        const BACKUP_POINTS = [338, 332, 151, 337];
+        // Точки для верхньої частини голови (вище очей):
+        // 10 - верхівка чола (найвища точка)
+        // 338 - ліва скроня верхня
+        // 454 - права скроня верхня
+        // 234 - додаткова ліва
+        // 454 - права
+        const FOREHEAD_TOP = 10;      // найвища точка чола
+        const LEFT_HIGH = 338;        // ліва скроня (верх)
+        const RIGHT_HIGH = 454;       // права скроня (верх)
+        const LEFT_BROW = 234;        // ліва брова (верх)
+        const RIGHT_BROW = 454;       // права брова
         
         // Стан програми
         let state = {
@@ -436,38 +439,45 @@
             } catch(e) {}
         }
         
-        // ---------- ОСНОВНА ЛОГІКА ВІНКА (КВАДРАТИЧНА КРИВА БЕЗЬЄ) ----------
-        // Отримує три опорні точки (ліва, верх, права) в координатах пікселів
+        // ---------- ВИПРАВЛЕНА ЛОГІКА ВІНКА (ВИЩЕ ОЧЕЙ) ----------
+        // Отримує три опорні точки: ліва скроня (високо), верх чола (піднятий ще вище), права скроня
         function getWreathControlPoints(landmarks, canvasW, canvasH) {
             if(!landmarks) return null;
             
-            let left = landmarks[LEFT_TEMPLE];
+            let left = landmarks[LEFT_HIGH];
             let top = landmarks[FOREHEAD_TOP];
-            let right = landmarks[RIGHT_TEMPLE];
+            let right = landmarks[RIGHT_HIGH];
             
-            // Якщо якоїсь основної точки немає, пробуємо резервні
-            if(!left || !top || !right) {
-                for(let idx of BACKUP_POINTS) {
-                    if(!left && landmarks[idx] && landmarks[idx].x < 0.4) left = landmarks[idx];
-                    if(!right && landmarks[idx] && landmarks[idx].x > 0.6) right = landmarks[idx];
-                    if(!top && landmarks[idx] && landmarks[idx].y < 0.3) top = landmarks[idx];
-                }
-            }
+            // Якщо якоїсь точки немає, пробуємо альтернативи
+            if(!left) left = landmarks[LEFT_BROW];
+            if(!right) right = landmarks[RIGHT_BROW];
+            
             if(!left || !top || !right) return null;
             
             // Конвертуємо в пікселі
-            const p0 = { x: left.x * canvasW, y: left.y * canvasH };
-            const p1 = { x: top.x * canvasW, y: top.y * canvasH };
-            const p2 = { x: right.x * canvasW, y: right.y * canvasH };
+            let p0 = { x: left.x * canvasW, y: left.y * canvasH };
+            let p1 = { x: top.x * canvasW, y: top.y * canvasH };
+            let p2 = { x: right.x * canvasW, y: right.y * canvasH };
             
-            // Коригуємо висоту: піднімаємо дугу трохи вище, щоб вінок точно був над очима
-            // Зменшуємо Y центральної точки на 5-10% для кращого вигляду
-            p1.y = p1.y - (p1.y - Math.min(p0.y, p2.y)) * 0.15;
+            // ПІДНІМАЄМО ВСЮ ДУГУ ВГОРУ, щоб вінок був НАД ОЧИМА
+            // Зменшуємо Y-координати всіх точок на 15-20% відносно верхньої межі
+            const minY = Math.min(p0.y, p1.y, p2.y);
+            const lift = (p0.y - minY) * 0.25; // піднімаємо на чверть відстані до верху
+            
+            p0.y = p0.y - lift - 8;   // додатковий зсув вгору
+            p1.y = p1.y - lift - 12;  // центральну точку піднімаємо більше для гарної дуги
+            p2.y = p2.y - lift - 8;
+            
+            // Також трохи звужуємо ширину, щоб вінок не звисав над очима
+            const centerX = (p0.x + p2.x) / 2;
+            const width = (p2.x - p0.x) * 0.92;
+            p0.x = centerX - width/2;
+            p2.x = centerX + width/2;
             
             return { p0, p1, p2 };
         }
         
-        // Розрахунок точки на квадратичній кривій Безьє за параметром t (0..1)
+        // Квадратична крива Безьє
         function bezierPoint(p0, p1, p2, t) {
             const mt = 1 - t;
             const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
@@ -475,7 +485,7 @@
             return { x, y };
         }
         
-        // Головна функція малювання вінка: рівномірний розподіл квітів вздовж кривої
+        // Головна функція малювання вінка
         function drawWreath(ctx, canvasW, canvasH, landmarks, flowers) {
             if(!landmarks || flowers.length === 0) return;
             const cp = getWreathControlPoints(landmarks, canvasW, canvasH);
@@ -485,21 +495,19 @@
             const count = flowers.length;
             
             for(let i = 0; i < count; i++) {
-                // Рівномірний параметр t від 0 до 1
                 const t = (count === 1) ? 0.5 : i / (count - 1);
                 const point = bezierPoint(p0, p1, p2, t);
                 
-                // Розмір квітки залежить від ширини голови
+                // Розмір квітки
                 const headWidth = Math.abs(p2.x - p0.x);
-                const size = Math.min(52, Math.max(38, headWidth * 0.12));
+                const size = Math.min(52, Math.max(36, headWidth * 0.11));
                 
                 ctx.shadowBlur = 10;
-                ctx.shadowColor = "rgba(0,0,0,0.45)";
+                ctx.shadowColor = "rgba(0,0,0,0.4)";
                 ctx.font = `${Math.floor(size)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // Тінь для об'єму
                 ctx.fillStyle = "rgba(0,0,0,0.5)";
                 ctx.fillText(flowers[i], point.x + 2, point.y + 2);
                 ctx.fillStyle = "#fffcf0";
