@@ -294,16 +294,25 @@
         const MAX_FLOWERS = 7;
         const FLOWER_SET = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀","🌸","🌻","🌼","💮","🌺","🌷","🌹","🌼","🌸","🌻"];
         
-        // Точки для обчислення центру голови та радіуса (контур обличчя)
-        const FACE_OVAL = [
-            10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 
-            0, 263, 466, 410, 375, 378, 365, 397, 288, 361, 
-            172, 136, 150, 176, 152, 148
+        // Точки для верхньої дуги голови (лоб, скроні, верхівка)
+        // Використовуємо індекси з facemesh, які окреслюють верхню частину обличчя
+        const TOP_HEAD_POINTS = [
+            10,  // верх лоба
+            338, // ліва скроня (верх)
+            297, // ліва брова
+            332, // ліва скроня
+            284, // ліве око (зовнішній кут)
+            251, // ліва щока верх
+            389, // права щока верх
+            356, // праве око (зовнішній кут)
+            454, // права скроня
+            323, // права скроня верх
+            0    // центральна точка чола
         ];
         
         // Стан програми
         let state = {
-            selected: [],          // вибрані квіти (емодзі)
+            selected: [],
             faceLandmarks: null,
             isARSession: false,
             cameraFacing: 'user',
@@ -311,7 +320,7 @@
             camera: null,
         };
         
-        // DOM елементи
+        // DOM
         const dom = {
             startOverlay: document.getElementById('startOverlay'),
             appContainer: document.getElementById('appContainer'),
@@ -328,7 +337,7 @@
         let canvasCtx = null;
         let animationFrame = null;
         
-        // ---------- ДОПОМІЖНІ ФУНКЦІЇ UI ----------
+        // ---------- UI ----------
         function showToast(msg, duration = 2000) {
             let old = document.querySelector('.toast');
             if(old) old.remove();
@@ -346,14 +355,12 @@
             const count = state.selected.length;
             dom.flowerCounter.textContent = `🌸 ${count} / ${MAX_FLOWERS} квітів`;
             
-            // Кнопка фото активна лише коли рівно 7 квітів
             if(count === MAX_FLOWERS) {
                 dom.takePhotoBtn.classList.add('active');
             } else {
                 dom.takePhotoBtn.classList.remove('active');
             }
             
-            // Відображення обраних квітів у вигляді міні-списку
             dom.selectedList.innerHTML = '';
             if(state.selected.length === 0) {
                 let placeholder = document.createElement('div');
@@ -375,7 +382,6 @@
                     dom.selectedList.appendChild(chip);
                 });
             }
-            
             highlightSelectedFlowers();
         }
         
@@ -413,7 +419,7 @@
             playSoftBeep();
         }
         
-        // ---------- ЗВУК (короткий біп) ----------
+        // ---------- ЗВУК ----------
         let audioCtx = null;
         function initAudioContext() {
             if(audioCtx) return;
@@ -437,61 +443,70 @@
             } catch(e) {}
         }
         
-        // ---------- ОСНОВНА ФУНКЦІЯ МАЛЮВАННЯ ВІНКА (КОЛО НАВКОЛО ГОЛОВИ) ----------
-        // Обчислює центр та радіус кола на основі контуру обличчя
-        function getHeadCircle(landmarks, canvasWidth, canvasHeight) {
+        // ---------- ОСНОВНА ЛОГІКА ВІНКА (ДУГА НА ГОЛОВІ) ----------
+        // Обчислюємо опорні точки для дуги: ліва скроня, права скроня, верх чола.
+        function getHeadArc(landmarks, canvasW, canvasH) {
             if(!landmarks) return null;
             let points = [];
-            for(let idx of FACE_OVAL) {
+            for(let idx of TOP_HEAD_POINTS) {
                 if(landmarks[idx]) {
                     points.push({
-                        x: landmarks[idx].x * canvasWidth,
-                        y: landmarks[idx].y * canvasHeight
+                        x: landmarks[idx].x * canvasW,
+                        y: landmarks[idx].y * canvasH
                     });
                 }
             }
-            if(points.length < 10) return null;
+            if(points.length < 5) return null;
             
-            // Знаходимо мінімальний та максимальний x, y
-            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            // Знаходимо крайні ліву та праву точки, а також найвищу (верхівка)
+            let leftMost = points[0], rightMost = points[0], topMost = points[0];
             for(let p of points) {
-                if(p.x < minX) minX = p.x;
-                if(p.x > maxX) maxX = p.x;
-                if(p.y < minY) minY = p.y;
-                if(p.y > maxY) maxY = p.y;
+                if(p.x < leftMost.x) leftMost = p;
+                if(p.x > rightMost.x) rightMost = p;
+                if(p.y < topMost.y) topMost = p;
             }
-            const centerX = (minX + maxX) / 2;
-            const centerY = (minY + maxY) / 2;
-            const width = maxX - minX;
-            const height = maxY - minY;
-            // Радіус кола трохи більше за півширини голови, щоб вінок був навколо
-            let radius = Math.max(width, height) * 0.55;
-            // Зміщуємо трохи вгору, щоб вінок сидів гарно (як обруч)
-            const circleY = centerY - radius * 0.12;
-            
-            return { cx: centerX, cy: circleY, radius: radius };
+            const leftX = leftMost.x;
+            const rightX = rightMost.x;
+            const topY = topMost.y;
+            const centerX = (leftX + rightX) / 2;
+            // Висота дуги (як сильно вона піднімається)
+            const arcHeight = Math.max(20, (topY - (leftMost.y + rightMost.y)/2) * 1.2);
+            // Ширина дуги
+            const width = rightX - leftX;
+            return { leftX, rightX, topY, centerX, arcHeight, width };
         }
         
         function drawWreath(ctx, canvasW, canvasH, landmarks, flowers) {
             if(!landmarks || flowers.length === 0) return;
-            const circle = getHeadCircle(landmarks, canvasW, canvasH);
-            if(!circle) return;
+            const arc = getHeadArc(landmarks, canvasW, canvasH);
+            if(!arc) return;
             
-            const { cx, cy, radius } = circle;
             const count = flowers.length;
-            // Розташовуємо квіти рівномірно по колу (повне коло)
+            // Малюємо квіти вздовж дуги (крива Безьє або просто парабола)
             for(let i = 0; i < count; i++) {
-                const angle = (i / count) * Math.PI * 2 - Math.PI/2; // починаємо зверху
-                const x = cx + Math.cos(angle) * radius;
-                const y = cy + Math.sin(angle) * radius * 0.9; // трохи притискаємо вертикаль для природності
-                // Розмір квітки залежить від радіуса
-                const size = Math.min(54, Math.max(38, radius * 0.18));
-                ctx.shadowBlur = 10;
+                let t = (count === 1) ? 0.5 : i / (count - 1);
+                // X: лінійна інтерполяція між лівою та правою скронею
+                let x = arc.leftX * (1 - t) + arc.rightX * t;
+                // Y: параболічна дуга (вершина в центрі)
+                let yOffset = Math.sin(t * Math.PI) * arc.arcHeight * 0.9;
+                let y = (arc.leftY || arc.topY) + yOffset - 10;
+                // Якщо не зберегли середню Y, обчислюємо приблизно
+                if(!arc.leftY) {
+                    const midY = (landmarks[10]?.y * canvasH + landmarks[338]?.y * canvasH)/2;
+                    y = midY + yOffset - 12;
+                } else {
+                    y = arc.leftY * (1 - t) + arc.rightY * t + yOffset - 12;
+                }
+                // Додаткова корекція, щоб вінок сидів на лобі
+                if(t < 0.2) y = arc.topY + (y - arc.topY) * (t/0.2);
+                if(t > 0.8) y = arc.topY + (y - arc.topY) * ((1-t)/0.2);
+                
+                const size = 40 + arc.arcHeight * 0.12;
+                ctx.shadowBlur = 8;
                 ctx.shadowColor = "rgba(0,0,0,0.45)";
                 ctx.font = `${Math.floor(size)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                // Легка тінь
                 ctx.fillStyle = "rgba(0,0,0,0.45)";
                 ctx.fillText(flowers[i], x + 2, y + 2);
                 ctx.fillStyle = "#fffcf0";
@@ -500,7 +515,54 @@
             ctx.shadowBlur = 0;
         }
         
-        // ---------- РЕНДЕР-ЦИКЛ ----------
+        // Отримуємо додаткові Y координати для лівої та правої точок дуги
+        function enhanceArc(landmarks, canvasW, canvasH) {
+            if(!landmarks) return null;
+            const leftIdx = 338;  // ліва скроня
+            const rightIdx = 454; // права скроня
+            const topIdx = 10;    // верх чола
+            if(!landmarks[leftIdx] || !landmarks[rightIdx] || !landmarks[topIdx]) return null;
+            return {
+                leftX: landmarks[leftIdx].x * canvasW,
+                leftY: landmarks[leftIdx].y * canvasH,
+                rightX: landmarks[rightIdx].x * canvasW,
+                rightY: landmarks[rightIdx].y * canvasH,
+                topY: landmarks[topIdx].y * canvasH,
+                arcHeight: (landmarks[topIdx].y * canvasH - (landmarks[leftIdx].y + landmarks[rightIdx].y)/2 * canvasH) * 1.1
+            };
+        }
+        
+        // Перевизначимо drawWreath більш точно, використовуючи точки скронь
+        function drawWreathFinal(ctx, canvasW, canvasH, landmarks, flowers) {
+            if(!landmarks || flowers.length === 0) return;
+            const arcData = enhanceArc(landmarks, canvasW, canvasH);
+            if(!arcData) return;
+            const { leftX, leftY, rightX, rightY, topY, arcHeight } = arcData;
+            const count = flowers.length;
+            for(let i = 0; i < count; i++) {
+                let t = (count === 1) ? 0.5 : i / (count - 1);
+                let x = leftX * (1 - t) + rightX * t;
+                let yBase = leftY * (1 - t) + rightY * t;
+                let yOffset = Math.sin(t * Math.PI) * arcHeight * 0.85;
+                let y = yBase + yOffset - 12;
+                // Коригуємо, щоб вінок був на лобі, а не на очах
+                if(t < 0.15) y = topY + (y - topY) * (t/0.15);
+                if(t > 0.85) y = topY + (y - topY) * ((1-t)/0.15);
+                const size = 40 + arcHeight * 0.1;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = "rgba(0,0,0,0.4)";
+                ctx.font = `${Math.floor(size)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = "rgba(0,0,0,0.45)";
+                ctx.fillText(flowers[i], x + 2, y + 2);
+                ctx.fillStyle = "#fffcf0";
+                ctx.fillText(flowers[i], x, y);
+            }
+            ctx.shadowBlur = 0;
+        }
+        
+        // ---------- РЕНДЕР ----------
         function renderLoop() {
             if(!canvasCtx || !dom.canvas || !dom.video.videoWidth) {
                 animationFrame = requestAnimationFrame(renderLoop);
@@ -514,7 +576,7 @@
             }
             canvasCtx.drawImage(dom.video, 0, 0, w, h);
             if(state.faceLandmarks && state.selected.length > 0) {
-                drawWreath(canvasCtx, w, h, state.faceLandmarks, state.selected);
+                drawWreathFinal(canvasCtx, w, h, state.faceLandmarks, state.selected);
             }
             animationFrame = requestAnimationFrame(renderLoop);
         }
@@ -559,7 +621,7 @@
             await state.camera.start();
         }
         
-        // ---------- ФОТОГРАФУВАННЯ ----------
+        // ---------- ФОТО ----------
         function takePhoto() {
             if(state.selected.length !== MAX_FLOWERS) {
                 showToast(`🌼 Додайте ще ${MAX_FLOWERS - state.selected.length} квітів`);
@@ -572,7 +634,7 @@
             const w = dom.canvas.width, h = dom.canvas.height;
             canvasCtx.drawImage(dom.video, 0, 0, w, h);
             if(state.faceLandmarks) {
-                drawWreath(canvasCtx, w, h, state.faceLandmarks, state.selected);
+                drawWreathFinal(canvasCtx, w, h, state.faceLandmarks, state.selected);
             } else {
                 showToast("👤 Не вдалося розпізнати обличчя, спробуйте ще раз");
                 return;
@@ -589,7 +651,7 @@
             }
         }
         
-        // ---------- СТВОРЕННЯ ПАНЕЛІ КВІТІВ ----------
+        // ---------- ПОБУДОВА ПАНЕЛІ КВІТІВ ----------
         function buildFlowerPanel() {
             dom.flowerStrip.innerHTML = '';
             FLOWER_SET.forEach(emoji => {
@@ -602,7 +664,7 @@
             });
         }
         
-        // ---------- ЗАПУСК ДОДАТКУ ----------
+        // ---------- ЗАПУСК ----------
         async function startApp() {
             dom.startOverlay.classList.add('hidden');
             dom.appContainer.classList.remove('hidden');
@@ -621,14 +683,12 @@
             }
         }
         
-        // ---------- ПОДІЇ ----------
         function bindEvents() {
             dom.startBtn.addEventListener('click', startApp);
             dom.resetBtn.addEventListener('click', resetAll);
             dom.takePhotoBtn.addEventListener('click', takePhoto);
         }
         
-        // ---------- ІНІЦІАЛІЗАЦІЯ ----------
         function init() {
             buildFlowerPanel();
             updateUI();
@@ -637,7 +697,6 @@
         
         init();
         
-        // Зупинка анімації при прихованні вкладки (економія ресурсів)
         document.addEventListener('visibilitychange', () => {
             if(document.hidden && animationFrame) {
                 cancelAnimationFrame(animationFrame);
