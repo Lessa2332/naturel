@@ -3,399 +3,302 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#1a3a1a">
-    <title>Вінок · 7 квітів</title>
+    <meta name="theme-color" content="#0f1f0f">
+    <title>Vinok AR · 2026 Edition</title>
     <style>
         :root {
-            --gold: #eabd6a;
-            --dark-green: #0f1f0f;
-            --panel-bg: rgba(44, 58, 40, 0.85);
+            --gold: #f3cf8a;
+            --white: #ffffff;
+            --glass: rgba(255, 255, 255, 0.1);
+            --blur: blur(20px);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            background: var(--dark-green);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: white;
+            background: #000;
+            font-family: 'SF Pro Display', -apple-system, sans-serif;
+            color: var(--white);
+            height: 100vh;
             overflow: hidden;
         }
 
-        /* Контейнер додатку */
-        .app {
-            width: 100%;
-            max-width: 500px;
-            height: 100vh;
-            background: #1a2a1a;
-            position: relative;
+        /* Екран завантаження/Старту */
+        .welcome-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: radial-gradient(circle at center, #1a3a1a, #000);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.8s cubic-bezier(0.86, 0, 0.07, 1);
         }
 
-        /* Камера */
-        .camera-box {
+        .welcome-screen.fade-out { transform: translateY(-100%); }
+
+        .start-btn {
+            background: var(--white);
+            color: #000;
+            border: none;
+            padding: 20px 50px;
+            border-radius: 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+
+        .start-btn:active { transform: scale(0.95); opacity: 0.8; }
+
+        /* AR Контейнер */
+        .ar-viewport {
             position: relative;
-            flex-grow: 1;
-            background: #000;
-            overflow: hidden;
+            width: 100%;
+            height: 100vh;
         }
 
         #videoElement, #outputCanvas {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scaleX(-1);
-            min-width: 100%;
-            min-height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             object-fit: cover;
+            transform: scaleX(-1);
         }
 
-        /* Інтерфейс поверх камери */
-        .overlay-ui {
+        /* UI Панель (2026 Style) */
+        .bottom-nav {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
+            padding: 30px 20px calc(30px + env(safe-area-inset-bottom));
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
             z-index: 10;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8));
-            padding-bottom: env(safe-area-inset-bottom);
         }
 
-        .counter {
-            text-align: center;
-            font-size: 0.9rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: var(--gold);
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-
-        /* Панель вибору */
-        .flower-panel {
-            background: var(--panel-bg);
-            backdrop-filter: blur(15px);
-            padding: 15px 0;
-            border-top: 1px solid rgba(234, 189, 106, 0.3);
-        }
-
-        .flower-strip {
+        .flower-scroll {
             display: flex;
             gap: 15px;
             overflow-x: auto;
-            padding: 0 20px;
+            padding: 10px 0;
             scrollbar-width: none;
         }
-        .flower-strip::-webkit-scrollbar { display: none; }
+        .flower-scroll::-webkit-scrollbar { display: none; }
 
-        .flower-card {
-            min-width: 65px;
-            height: 65px;
-            background: white;
-            border-radius: 50%;
+        .item-card {
+            min-width: 70px; height: 70px;
+            background: var(--glass);
+            backdrop-filter: var(--blur);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.2rem;
-            cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 2rem;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .flower-card:active { transform: scale(0.8); }
-        .flower-card.selected { border: 3px solid var(--gold); }
+        .item-card:active { background: var(--gold); transform: scale(0.9); }
 
-        /* Кнопка фото */
-        .controls {
-            padding: 20px;
+        .action-bar {
             display: flex;
-            justify-content: center;
-            gap: 15px;
+            justify-content: space-between;
             align-items: center;
+            margin-top: 25px;
         }
 
-        #takePhotoBtn {
-            width: 80px;
-            height: 80px;
+        .shutter {
+            width: 75px; height: 75px;
             border-radius: 50%;
-            border: 5px solid white;
-            background: rgba(255,255,255,0.2);
+            border: 4px solid var(--white);
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            position: relative;
-            transition: 0.3s;
-            opacity: 0.4;
-            pointer-events: none;
+        }
+        .shutter-inner {
+            width: 85%; height: 85%;
+            background: var(--white);
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        .shutter:active .shutter-inner { transform: scale(0.9); }
+
+        .btn-utility {
+            width: 50px; height: 50px;
+            border-radius: 18px;
+            background: var(--glass);
+            backdrop-filter: var(--blur);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
         }
 
-        #takePhotoBtn.active {
-            opacity: 1;
-            pointer-events: auto;
-            background: white;
-            box-shadow: 0 0 20px rgba(255,255,255,0.5);
-        }
-
-        #takePhotoBtn::after {
-            content: "";
+        .status-pill {
             position: absolute;
-            inset: 5px;
-            border-radius: 50%;
-            border: 2px solid #000;
-        }
-
-        .btn-round {
-            background: var(--panel-bg);
-            border: 1px solid var(--gold);
-            color: white;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-
-        /* Стартовий екран */
-        .start-overlay {
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(circle at center, #1a3a1a, #050a05);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            transition: 0.5s;
-        }
-
-        .start-btn {
-            background: var(--gold);
-            color: #241a05;
-            border: none;
-            padding: 18px 40px;
-            border-radius: 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            margin-top: 30px;
-        }
-
-        .hidden { opacity: 0; pointer-events: none; }
-        
-        .toast {
-            position: fixed;
-            top: 20px;
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
+            top: env(safe-area-inset-top);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
             border-radius: 20px;
-            z-index: 1000;
-            border: 1px solid var(--gold);
+            font-size: 0.8rem;
+            color: var(--gold);
+            border: 1px solid rgba(243, 207, 138, 0.3);
         }
     </style>
 </head>
 <body>
 
-<audio id="bgMusic" src="fon.mp3" loop></audio>
-
-<div class="start-overlay" id="startOverlay">
-    <h1 style="color:var(--gold); font-size: 2.5rem; margin-bottom: 10px;">ВІНОК</h1>
-    <p style="opacity: 0.8;">Українська AR-магія</p>
-    <button class="start-btn" id="startBtn">Почати ✨</button>
+<div class="welcome-screen" id="welcome">
+    <h2 style="margin-bottom: 20px; letter-spacing: 4px;">VINOK AR</h2>
+    <button class="start-btn" id="startBtn">УВІЙТИ В ДОСВІД</button>
 </div>
 
-<div class="app">
-    <div class="camera-box">
-        <video id="videoElement" autoplay playsinline muted></video>
-        <canvas id="outputCanvas"></canvas>
-    </div>
+<div class="ar-viewport">
+    <video id="videoElement" autoplay playsinline muted></video>
+    <canvas id="outputCanvas"></canvas>
+    
+    <div class="status-pill" id="status">Знайдіть своє обличчя</div>
 
-    <div class="overlay-ui">
-        <div class="counter" id="flowerCounter">Оберіть 7 квітів</div>
+    <div class="bottom-nav">
+        <div class="flower-scroll" id="flowerScroll"></div>
         
-        <div class="flower-panel">
-            <div class="flower-strip" id="flowerStrip"></div>
-        </div>
-
-        <div class="controls">
-            <button class="btn-round" id="resetBtn" title="Скинути">↺</button>
-            <button id="takePhotoBtn"></button>
-            <button class="btn-round" id="shareBtn" title="Поділитися">↗</button>
+        <div class="action-bar">
+            <button class="btn-utility" onclick="resetWreath()">✕</button>
+            <div class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></div>
+            <button class="btn-utility" id="shareBtn">↗</button>
         </div>
     </div>
 </div>
+
+<audio id="fonMusic" src="fon.mp3" loop></audio>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
-    const MAX_FLOWERS = 7;
-    const FLOWER_SET = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀"];
-    
     let state = {
         selected: [],
-        faceLandmarks: null,
-        faceMesh: null,
-        camera: null,
-        isCapturing: false
+        smileScore: 0,
+        isMusicPlaying: false
     };
 
-    const dom = {
-        video: document.getElementById('videoElement'),
-        canvas: document.getElementById('outputCanvas'),
-        strip: document.getElementById('flowerStrip'),
-        counter: document.getElementById('flowerCounter'),
-        photoBtn: document.getElementById('takePhotoBtn'),
-        music: document.getElementById('bgMusic')
-    };
+    const flowers = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀"];
+    const canvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+    const music = document.getElementById('fonMusic');
 
-    const ctx = dom.canvas.getContext('2d');
-
-    // Ініціалізація квіток
-    function initFlowers() {
-        FLOWER_SET.forEach(emoji => {
-            const el = document.createElement('div');
-            el.className = 'flower-card';
-            el.textContent = emoji;
-            el.onclick = () => {
-                if(state.selected.length < MAX_FLOWERS) {
-                    state.selected.push({emoji, scale: 0}); // Додаємо з нульовим масштабом для анімації
-                    if(navigator.vibrate) navigator.vibrate(50);
-                    updateUI();
+    // Ініціалізація UI
+    function initUI() {
+        const scroll = document.getElementById('flowerScroll');
+        flowers.forEach(f => {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.textContent = f;
+            card.onclick = () => {
+                if(state.selected.length < 7) {
+                    state.selected.push({ emoji: f, offset: Math.random() * 20 });
+                    if(navigator.vibrate) navigator.vibrate(40);
                 }
             };
-            dom.strip.appendChild(el);
+            scroll.appendChild(card);
         });
     }
 
-    function updateUI() {
-        const count = state.selected.length;
-        dom.counter.textContent = count === MAX_FLOWERS ? "Вінок готовий!" : `Зібрано: ${count} з ${MAX_FLOWERS}`;
-        dom.photoBtn.classList.toggle('active', count === MAX_FLOWERS);
+    // AR Логіка
+    async function startAR() {
+        const faceMesh = new FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.5 });
+        faceMesh.onResults(onResults);
+
+        const camera = new Camera(document.getElementById('videoElement'), {
+            onFrame: async () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                await faceMesh.send({image: document.getElementById('videoElement')});
+            }
+        });
+        camera.start();
     }
 
-    // AR Малювання
-    function drawWreath(landmarks) {
-        if(!landmarks || state.selected.length === 0) return;
+    function onResults(results) {
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-        const left = landmarks[234];
-        const right = landmarks[454];
-        const top = landmarks[10];
-
-        const p0 = { x: left.x * dom.canvas.width, y: left.y * dom.canvas.height };
-        const p2 = { x: right.x * dom.canvas.width, y: right.y * dom.canvas.height };
-        
-        const width = Math.abs(p2.x - p0.x);
-        const arcHeight = width * 0.4;
-        const centerX = (p0.x + p2.x) / 2;
-        const p1 = { x: centerX, y: (Math.min(p0.y, p2.y)) - arcHeight };
-
-        state.selected.forEach((item, i) => {
-            const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
+        if (results.multiFaceLandmarks?.[0]) {
+            const landmarks = results.multiFaceLandmarks[0];
+            document.getElementById('status').style.display = 'none';
             
-            // Плавна анімація появи
-            if(item.scale < 1) item.scale += 0.1;
+            // Детекція посмішки (відстань між кутиками губ)
+            const lipLeft = landmarks[61];
+            const lipRight = landmarks[291];
+            const dist = Math.hypot(lipLeft.x - lipRight.x, lipLeft.y - lipRight.y);
+            state.smileScore = Math.max(0, (dist - 0.07) * 10); // Спрощена логіка
 
+            drawWreath(landmarks);
+        } else {
+            document.getElementById('status').style.display = 'block';
+        }
+        ctx.restore();
+    }
+
+    function drawWreath(landmarks) {
+        const left = landmarks[234], right = landmarks[454], top = landmarks[10];
+        const p0 = { x: left.x * canvas.width, y: left.y * canvas.height };
+        const p2 = { x: right.x * canvas.width, y: right.y * canvas.height };
+        const p1 = { x: (p0.x + p2.x)/2, y: (top.y * canvas.height) - (Math.abs(p2.x - p0.x) * 0.4) };
+
+        state.selected.forEach((f, i) => {
+            const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
             const mt = 1 - t;
             const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
             const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
 
-            const size = (width * 0.15) * item.scale;
+            // Ефект 2026: Квіти пульсують від посмішки
+            const smileBoost = 1 + (state.smileScore * 0.5);
+            const size = (Math.abs(p2.x - p0.x) * 0.18) * smileBoost;
 
             ctx.save();
             ctx.translate(x, y);
+            
+            // Тінь (Ambient Occlusion)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            
             ctx.font = `${size}px serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            // Тінь для реалістичності
-            ctx.shadowColor = 'rgba(0,0,0,0.3)';
-            ctx.shadowBlur = 10;
-            ctx.fillText(item.emoji, 0, 0);
+            ctx.fillText(f.emoji, 0, 0);
             ctx.restore();
         });
     }
 
-    async function setupCamera() {
-        state.faceMesh = new FaceMesh({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-        });
+    // Службові функції
+    window.resetWreath = () => state.selected = [];
 
-        state.faceMesh.setOptions({
-            maxNumFaces: 1,
-            refineLandmarks: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
+    window.capturePhoto = () => {
+        const data = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = data; a.download = 'ar-vinok.png'; a.click();
+    };
 
-        state.faceMesh.onResults(results => {
-            ctx.clearRect(0, 0, dom.canvas.width, dom.canvas.height);
-            ctx.drawImage(dom.video, 0, 0, dom.canvas.width, dom.canvas.height);
-            
-            if (results.multiFaceLandmarks?.[0]) {
-                state.faceLandmarks = results.multiFaceLandmarks[0];
-                drawWreath(state.faceLandmarks);
-            }
-        });
-
-        state.camera = new Camera(dom.video, {
-            onFrame: async () => {
-                dom.canvas.width = dom.video.videoWidth;
-                dom.canvas.height = dom.video.videoHeight;
-                await state.faceMesh.send({image: dom.video});
-            },
-            width: 640,
-            height: 480
-        });
-        state.camera.start();
-    }
-
-    // Кнопки
     document.getElementById('startBtn').onclick = () => {
-        document.getElementById('startOverlay').classList.add('hidden');
-        dom.music.play();
-        setupCamera();
+        document.getElementById('welcome').classList.add('fade-out');
+        music.play();
+        startAR();
     };
 
-    document.getElementById('resetBtn').onclick = () => {
-        state.selected = [];
-        updateUI();
-    };
-
-    dom.photoBtn.onclick = () => {
-        const dataUrl = dom.canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = 'vinok.png';
-        link.href = dataUrl;
-        link.click();
-        if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    };
-
-    document.getElementById('shareBtn').onclick = async () => {
-        const blob = await (await fetch(dom.canvas.toDataURL())).blob();
-        const file = new File([blob], 'vinok.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: 'Мій вінок',
-                text: 'Подивіться, який вінок я сплела!'
-            });
-        } else {
-            alert("Ваш браузер не підтримує прямий репост, фото збережено!");
-            dom.photoBtn.click();
-        }
-    };
-
-    initFlowers();
+    initUI();
 </script>
 </body>
 </html>
