@@ -284,29 +284,15 @@
     </div>
 </div>
 
-<!-- MediaPipe -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
     (function(){
-        // ---------- КОНФІГУРАЦІЯ ----------
         const MAX_FLOWERS = 7;
         const FLOWER_SET = ["🌻","🌼","🌸","🌺","🌷","🌹","💐","🏵️","🌿","🍀","🌸","🌻","🌼","💮","🌺","🌷","🌹","🌼","🌸","🌻"];
         
-        // Точки для верхньої частини голови (вище очей):
-        // 10 - верхівка чола (найвища точка)
-        // 338 - ліва скроня верхня
-        // 454 - права скроня верхня
-        // 234 - додаткова ліва
-        // 454 - права
-        const FOREHEAD_TOP = 10;      // найвища точка чола
-        const LEFT_HIGH = 338;        // ліва скроня (верх)
-        const RIGHT_HIGH = 454;       // права скроня (верх)
-        const LEFT_BROW = 234;        // ліва брова (верх)
-        const RIGHT_BROW = 454;       // права брова
-        
-        // Стан програми
+        // Стан
         let state = {
             selected: [],
             faceLandmarks: null,
@@ -333,7 +319,7 @@
         let canvasCtx = null;
         let animationFrame = null;
         
-        // ---------- UI ----------
+        // UI функції
         function showToast(msg, duration = 2000) {
             let old = document.querySelector('.toast');
             if(old) old.remove();
@@ -350,12 +336,7 @@
         function updateUI() {
             const count = state.selected.length;
             dom.flowerCounter.textContent = `🌸 ${count} / ${MAX_FLOWERS} квітів`;
-            
-            if(count === MAX_FLOWERS) {
-                dom.takePhotoBtn.classList.add('active');
-            } else {
-                dom.takePhotoBtn.classList.remove('active');
-            }
+            dom.takePhotoBtn.classList.toggle('active', count === MAX_FLOWERS);
             
             dom.selectedList.innerHTML = '';
             if(state.selected.length === 0) {
@@ -384,11 +365,7 @@
         function highlightSelectedFlowers() {
             document.querySelectorAll('.flower-card').forEach(card => {
                 const flower = card.dataset.flower;
-                if(state.selected.includes(flower)) {
-                    card.classList.add('selected');
-                } else {
-                    card.classList.remove('selected');
-                }
+                card.classList.toggle('selected', state.selected.includes(flower));
             });
         }
         
@@ -415,7 +392,7 @@
             playSoftBeep();
         }
         
-        // ---------- ЗВУК ----------
+        // Звук
         let audioCtx = null;
         function initAudioContext() {
             if(audioCtx) return;
@@ -439,53 +416,45 @@
             } catch(e) {}
         }
         
-        // ---------- ВИПРАВЛЕНА ЛОГІКА ВІНКА (ВИЩЕ ОЧЕЙ) ----------
-        // Отримує три опорні точки: ліва скроня (високо), верх чола (піднятий ще вище), права скроня
+        // ---------- ОНОВЛЕНА ЛОГІКА ВІНКА (висока дуга над очима) ----------
         function getWreathControlPoints(landmarks, canvasW, canvasH) {
             if(!landmarks) return null;
+            // Ключові точки: ліва скроня (234), права скроня (454), верх чола (10)
+            const left = landmarks[234];
+            const right = landmarks[454];
+            const top = landmarks[10];
+            if(!left || !right || !top) return null;
             
-            let left = landmarks[LEFT_HIGH];
-            let top = landmarks[FOREHEAD_TOP];
-            let right = landmarks[RIGHT_HIGH];
-            
-            // Якщо якоїсь точки немає, пробуємо альтернативи
-            if(!left) left = landmarks[LEFT_BROW];
-            if(!right) right = landmarks[RIGHT_BROW];
-            
-            if(!left || !top || !right) return null;
-            
-            // Конвертуємо в пікселі
             let p0 = { x: left.x * canvasW, y: left.y * canvasH };
-            let p1 = { x: top.x * canvasW, y: top.y * canvasH };
             let p2 = { x: right.x * canvasW, y: right.y * canvasH };
             
-            // ПІДНІМАЄМО ВСЮ ДУГУ ВГОРУ, щоб вінок був НАД ОЧИМА
-            // Зменшуємо Y-координати всіх точок на 15-20% відносно верхньої межі
-            const minY = Math.min(p0.y, p1.y, p2.y);
-            const lift = (p0.y - minY) * 0.25; // піднімаємо на чверть відстані до верху
-            
-            p0.y = p0.y - lift - 8;   // додатковий зсув вгору
-            p1.y = p1.y - lift - 12;  // центральну точку піднімаємо більше для гарної дуги
-            p2.y = p2.y - lift - 8;
-            
-            // Також трохи звужуємо ширину, щоб вінок не звисав над очима
+            const headWidth = Math.abs(p2.x - p0.x);
+            const arcHeight = headWidth * 0.35;  // 35% ширини = гарна дуга
             const centerX = (p0.x + p2.x) / 2;
-            const width = (p2.x - p0.x) * 0.92;
-            p0.x = centerX - width/2;
-            p2.x = centerX + width/2;
+            const baselineY = Math.min(p0.y, p2.y);
+            const apexY = baselineY - arcHeight;
+            let p1 = { x: centerX, y: apexY };
+            
+            // Додаткова корекція при близькому обличчі
+            const faceScale = Math.min(1.0, headWidth / 300);
+            p1.y -= (1 - faceScale) * 20;
+            
+            // Трохи звужуємо базу, щоб квітки не звисали
+            const narrow = 0.95;
+            p0.x = centerX - (centerX - p0.x) * narrow;
+            p2.x = centerX + (p2.x - centerX) * narrow;
             
             return { p0, p1, p2 };
         }
         
-        // Квадратична крива Безьє
         function bezierPoint(p0, p1, p2, t) {
             const mt = 1 - t;
-            const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
-            const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
-            return { x, y };
+            return {
+                x: mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x,
+                y: mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y
+            };
         }
         
-        // Головна функція малювання вінка
         function drawWreath(ctx, canvasW, canvasH, landmarks, flowers) {
             if(!landmarks || flowers.length === 0) return;
             const cp = getWreathControlPoints(landmarks, canvasW, canvasH);
@@ -498,25 +467,32 @@
                 const t = (count === 1) ? 0.5 : i / (count - 1);
                 const point = bezierPoint(p0, p1, p2, t);
                 
-                // Розмір квітки
                 const headWidth = Math.abs(p2.x - p0.x);
-                const size = Math.min(52, Math.max(36, headWidth * 0.11));
+                const baseSize = Math.min(56, Math.max(38, headWidth * 0.13));
                 
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = "rgba(0,0,0,0.4)";
-                ctx.font = `${Math.floor(size)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+                // Поворот по дотичній до кривої
+                const eps = 0.01;
+                const next = bezierPoint(p0, p1, p2, Math.min(1, t + eps));
+                const angle = Math.atan2(next.y - point.y, next.x - point.x);
+                
+                ctx.save();
+                ctx.translate(point.x, point.y);
+                ctx.rotate(angle);
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.font = `${Math.floor(baseSize)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                
-                ctx.fillStyle = "rgba(0,0,0,0.5)";
-                ctx.fillText(flowers[i], point.x + 2, point.y + 2);
-                ctx.fillStyle = "#fffcf0";
-                ctx.fillText(flowers[i], point.x, point.y);
+                ctx.fillStyle = "rgba(0,0,0,0.4)";
+                ctx.fillText(flowers[i], 2, 2);
+                ctx.fillStyle = "#fffdf5";
+                ctx.fillText(flowers[i], 0, 0);
+                ctx.restore();
             }
             ctx.shadowBlur = 0;
         }
         
-        // ---------- РЕНДЕР ----------
+        // Рендер
         function renderLoop() {
             if(!canvasCtx || !dom.canvas || !dom.video.videoWidth) {
                 animationFrame = requestAnimationFrame(renderLoop);
@@ -535,7 +511,7 @@
             animationFrame = requestAnimationFrame(renderLoop);
         }
         
-        // ---------- MEDIAPIPE + КАМЕРА ----------
+        // MediaPipe + камера
         async function initCameraAndMesh() {
             if(state.faceMesh) {
                 try { await state.faceMesh.close(); } catch(e) {}
@@ -554,15 +530,10 @@
                 minTrackingConfidence: 0.65
             });
             state.faceMesh.onResults((results) => {
-                if(results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-                    state.faceLandmarks = results.multiFaceLandmarks[0];
-                } else {
-                    state.faceLandmarks = null;
-                }
+                state.faceLandmarks = results.multiFaceLandmarks?.[0] || null;
             });
             
-            const cameraUtils = Camera;
-            state.camera = new cameraUtils(dom.video, {
+            state.camera = new Camera(dom.video, {
                 onFrame: async () => {
                     if(state.isARSession && state.faceMesh) {
                         await state.faceMesh.send({ image: dom.video });
@@ -575,7 +546,7 @@
             await state.camera.start();
         }
         
-        // ---------- ФОТО ----------
+        // Фото
         function takePhoto() {
             if(state.selected.length !== MAX_FLOWERS) {
                 showToast(`🌼 Додайте ще ${MAX_FLOWERS - state.selected.length} квітів`);
@@ -605,7 +576,7 @@
             }
         }
         
-        // ---------- ПОБУДОВА ПАНЕЛІ КВІТІВ ----------
+        // Панель квітів
         function buildFlowerPanel() {
             dom.flowerStrip.innerHTML = '';
             FLOWER_SET.forEach(emoji => {
@@ -618,7 +589,7 @@
             });
         }
         
-        // ---------- ЗАПУСК ----------
+        // Запуск
         async function startApp() {
             dom.startOverlay.classList.add('hidden');
             dom.appContainer.classList.remove('hidden');
