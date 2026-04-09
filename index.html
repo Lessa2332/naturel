@@ -307,12 +307,32 @@
     };
 
     document.getElementById('shareBtn').onclick = async () => {
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-        const file = new File([blob], 'vinok.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({ files: [file], title: 'Мій вінок 🇺🇦', text: 'Я Хранитель Флори!' });
-        } else { capturePhoto(); }
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const file = new File([blob], 'vinok-keeper.png', { type: 'image/png' });
+    
+    const shareData = {
+        files: [file],
+        title: 'Місія: Хранитель Флори',
+        text: 'Я оберігаю рідкісні квіти України! Мій магічний вінок активовано. Спробуй і ти: [встав тут посилання на свій сайт]'
     };
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share(shareData);
+        } catch (err) {
+            console.log('Помилка шерингу:', err);
+            // Якщо шеринг не спрацював, просто скачуємо файл
+            const link = document.createElement('a');
+            link.download = 'vinok.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    } else {
+        // Якщо браузер взагалі не підтримує шеринг файлів
+        capturePhoto();
+    }
+};
+
 
     document.getElementById('startBtn').onclick = () => {
         document.getElementById('welcome').classList.add('hidden');
