@@ -4,27 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Чарівний віночок 🌸</title>
-    <!-- Підключення WebAR.rocks.face (легкий face tracking + Three.js) -->
-    <script src="https://cdn.jsdelivr.net/npm/@webar-rocks/face@1.0.5/dist/webar-face.min.js"></script>
-    <!-- Додаткові бібліотеки для фото -->
+    <!-- MindAR.js (face tracking) + Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.3/dist/mindar-face.prod.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Для фото -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none; /* щоб не виділялися кнопки/емодзі */
+            user-select: none;
         }
-
         body {
             overflow: hidden;
-            font-family: 'Segoe UI', 'Quicksand', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+            font-family: 'Quicksand', 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: #000;
-            touch-action: none; /* покращує роботу з тач-екраном */
+            touch-action: none;
         }
-
-        /* Головний контейнер AR */
-        #ar-container {
+        /* Контейнер для AR */
+        #mindar-container {
             position: fixed;
             top: 0;
             left: 0;
@@ -32,8 +31,7 @@
             height: 100%;
             z-index: 1;
         }
-
-        canvas {
+        video, canvas {
             position: absolute;
             top: 0;
             left: 0;
@@ -41,8 +39,7 @@
             height: 100% !important;
             object-fit: cover;
         }
-
-        /* Панель квіток (емодзі) внизу */
+        /* Панель квіток внизу */
         .flower-panel {
             position: fixed;
             bottom: 20px;
@@ -50,36 +47,32 @@
             right: 0;
             display: flex;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
-            padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(20px);
-            border-radius: 60px;
-            margin: 0 16px;
-            z-index: 10;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50px;
+            margin: 0 12px;
+            z-index: 20;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
         }
-
         .flower-emoji {
-            font-size: 44px;
+            font-size: 42px;
             cursor: pointer;
-            transition: transform 0.2s ease, filter 0.2s;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-            background: rgba(255,255,240,0.7);
-            border-radius: 60px;
-            padding: 6px;
-            width: 64px;
+            transition: transform 0.1s ease;
+            background: rgba(255,245,230,0.7);
+            border-radius: 50px;
+            padding: 5px;
+            width: 60px;
             text-align: center;
             backdrop-filter: blur(4px);
         }
-
         .flower-emoji:active {
             transform: scale(0.9);
         }
-
-        /* Кнопки управління */
+        /* Кнопки */
         .button-bar {
             position: fixed;
             bottom: 110px;
@@ -87,114 +80,94 @@
             right: 0;
             display: flex;
             justify-content: center;
-            gap: 20px;
-            z-index: 10;
-            padding: 0 20px;
+            gap: 18px;
+            z-index: 20;
+            padding: 0 16px;
         }
-
         .magic-btn {
-            background: rgba(255, 220, 200, 0.9);
+            background: rgba(255, 220, 200, 0.95);
             backdrop-filter: blur(12px);
             border: none;
-            padding: 12px 24px;
+            padding: 10px 22px;
             border-radius: 50px;
             font-size: 18px;
             font-weight: bold;
             color: #5a3e2b;
             font-family: inherit;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             cursor: pointer;
-            transition: 0.2s;
-            letter-spacing: 0.5px;
+            transition: 0.1s;
         }
-
         .magic-btn:active {
             transform: scale(0.96);
-            background: #ffe0c0;
         }
-
         .reset-btn {
-            background: rgba(255, 180, 160, 0.9);
+            background: rgba(255, 180, 160, 0.95);
             color: #8b3c1c;
         }
-
-        /* Лічильник квіток */
         .counter {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            top: 16px;
+            right: 16px;
             background: rgba(0,0,0,0.5);
             backdrop-filter: blur(8px);
-            padding: 8px 16px;
-            border-radius: 40px;
-            color: #fff3e6;
+            padding: 6px 14px;
+            border-radius: 30px;
+            color: #fff0e0;
             font-weight: bold;
             font-size: 18px;
-            z-index: 10;
+            z-index: 20;
             font-family: monospace;
-            letter-spacing: 1px;
         }
-
-        /* Привітання (показується при старті) */
+        /* Привітання */
         .welcome {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle at center, #ffdde1, #ee9ca7);
+            background: radial-gradient(circle at center, #ffe6f0, #ffb7c5);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 20;
+            z-index: 30;
             text-align: center;
-            transition: opacity 1s ease;
-            font-family: inherit;
-            color: #3b2a1f;
+            transition: opacity 0.8s ease;
+            color: #4a2a1a;
         }
-
         .welcome h1 {
-            font-size: 2.8rem;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 10px rgba(255,255,200,0.8);
+            font-size: 2.6rem;
+            margin-bottom: 16px;
+            text-shadow: 2px 2px 12px rgba(255,200,200,0.9);
         }
-
         .welcome p {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             max-width: 80%;
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
-
         .welcome button {
-            background: #ffb347;
+            background: #ff9f6e;
             border: none;
-            padding: 16px 32px;
+            padding: 14px 32px;
             border-radius: 60px;
             font-size: 1.4rem;
             font-weight: bold;
             color: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 18px rgba(0,0,0,0.2);
             cursor: pointer;
         }
-
-        /* Приховуємо стандартні рамки навколо відео/канвас */
-        video, canvas {
-            outline: none;
-        }
-
         @media (max-width: 600px) {
-            .flower-emoji { font-size: 36px; width: 52px; }
-            .magic-btn { padding: 8px 18px; font-size: 16px; }
-            .counter { font-size: 14px; top: 10px; right: 10px; }
+            .flower-emoji { font-size: 34px; width: 52px; }
+            .magic-btn { padding: 8px 16px; font-size: 15px; }
+            .counter { font-size: 14px; top: 12px; right: 12px; }
         }
     </style>
 </head>
 <body>
 
-<div id="ar-container"></div>
+<div id="mindar-container"></div>
 <div class="flower-panel" id="flowerPanel">
-    <!-- Емодзі квіток (доступно багато, але обмеження 7) -->
     <div class="flower-emoji" data-flower="🌸">🌸</div>
     <div class="flower-emoji" data-flower="🌼">🌼</div>
     <div class="flower-emoji" data-flower="🌻">🌻</div>
@@ -202,15 +175,13 @@
     <div class="flower-emoji" data-flower="🌷">🌷</div>
     <div class="flower-emoji" data-flower="🌹">🌹</div>
     <div class="flower-emoji" data-flower="💮">💮</div>
-    <div class="flower-emoji" data-flower="🌸">🌸</div> <!-- додаткова -->
 </div>
-
 <div class="button-bar">
     <button class="magic-btn" id="photoBtn">📸 Фото</button>
     <button class="magic-btn reset-btn" id="resetBtn">🌀 Скинути</button>
     <button class="magic-btn" id="saveBtn">💾 Зберегти</button>
 </div>
-<div class="counter" id="counter">🌼 0 / 7</div>
+<div class="counter" id="counter">🌸 0 / 7</div>
 
 <div class="welcome" id="welcomeScreen">
     <h1>✨ Вітаю, чарівнице! ✨</h1>
@@ -219,24 +190,19 @@
 </div>
 
 <script>
-    (function(){
-        // ---- Глобальні змінні ----
-        let arScene = null;          // об'єкт WebAR.rocks.face
-        let currentFlowers = [];     // масив вибраних квітів (емодзі)
-        let flowerSprites = [];       // масив 3D-спрайтів (квіток у віночку)
-        let groupFlowers = null;      // група Three.js для віночка
-        let isARReady = false;
-        let frameRequestId = null;
-        let lastTimestamp = 0;
+    (function() {
+        // ---- Змінні ----
+        let currentFlowers = [];          // масив обраних квітів (емодзі)
+        let flowerSprites = [];            // масив Three.js спрайтів
+        let wreathGroup = null;            // група для віночка
+        let mindarFace = null;              // об'єкт MindAR
+        let threeRenderer = null;
+        let threeScene = null;
+        let threeCamera = null;
+        let isARStarted = false;
         const MAX_FLOWERS = 7;
-        
-        // Отримуємо доступ до Three.js через глобальний об'єкт WebAR
-        let THREE = null;
-        let scene = null;
-        let camera = null;
-        let renderer = null;
-        
-        // Елементи UI
+
+        // DOM елементи
         const flowerPanel = document.getElementById('flowerPanel');
         const resetBtn = document.getElementById('resetBtn');
         const photoBtn = document.getElementById('photoBtn');
@@ -244,76 +210,70 @@
         const counterDiv = document.getElementById('counter');
         const welcomeScreen = document.getElementById('welcomeScreen');
         const startBtn = document.getElementById('startBtn');
-        
+
         // Оновлення лічильника
         function updateCounter() {
             counterDiv.innerHTML = `🌸 ${currentFlowers.length} / ${MAX_FLOWERS}`;
         }
-        
-        // Скинути віночок
+
+        // Повне скидання віночка
         function resetWreath() {
             currentFlowers = [];
             updateCounter();
             rebuildWreath();
-            // магічний ефект: коротка вібрація (якщо підтримується)
             if (navigator.vibrate) navigator.vibrate(50);
         }
-        
-        // Побудувати віночок з поточних квітів
+
+        // Побудова віночка з поточних квітів
         function rebuildWreath() {
-            if (!groupFlowers || !THREE) return;
-            // видалити старі спрайти
-            while(groupFlowers.children.length > 0) {
-                groupFlowers.remove(groupFlowers.children[0]);
+            if (!wreathGroup) return;
+            // Видаляємо старі спрайти
+            while(wreathGroup.children.length > 0) {
+                wreathGroup.remove(wreathGroup.children[0]);
             }
             flowerSprites = [];
-            
             const count = currentFlowers.length;
             if (count === 0) return;
-            
-            // Розташування по півколу над головою (радіус, кут)
-            const radius = 0.32;      // радіус віночка
-            const yOffset = 0.22;      // висота над центром обличчя (середина чола)
-            const startAngle = -Math.PI / 2.2;  // початок зліва
-            const endAngle = Math.PI / 2.2;      // кінець справа
-            
+
+            // Параметри півкола (радіус, висота)
+            const radius = 0.38;
+            const yBase = 0.22;    // над центром чола
+            const startAngle = -Math.PI / 2.2;
+            const endAngle = Math.PI / 2.2;
+
             for (let i = 0; i < count; i++) {
-                const t = count === 1 ? 0.5 : i / (count - 1); // 0..1
+                const t = (count === 1) ? 0.5 : i / (count - 1);
                 const angle = startAngle + t * (endAngle - startAngle);
                 const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius * 0.6; // трохи зміщено назад для об'єму
-                const y = yOffset + Math.sin(angle) * 0.05; // легка хвиля
-                
-                // Створюємо спрайт з текстурою емодзі (використовуємо canvas texture)
+                const z = Math.sin(angle) * radius * 0.5;
+                const y = yBase + Math.sin(angle) * 0.06;
+
                 const emoji = currentFlowers[i];
+                // Створюємо текстуру з емодзі на canvas
                 const canvas = document.createElement('canvas');
                 canvas.width = 128;
                 canvas.height = 128;
                 const ctx = canvas.getContext('2d');
-                ctx.font = '100px "Segoe UI Emoji"';
+                ctx.font = '96px "Segoe UI Emoji"';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillStyle = 'white';
                 ctx.shadowBlur = 12;
-                ctx.shadowColor = 'rgba(255,200,200,0.8)';
+                ctx.shadowColor = 'rgba(255,180,180,0.9)';
+                ctx.fillStyle = 'white';
                 ctx.fillText(emoji, 64, 64);
-                // додаємо світіння
                 const texture = new THREE.CanvasTexture(canvas);
-                const material = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.95 });
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
                 const sprite = new THREE.Sprite(material);
-                sprite.scale.set(0.28, 0.28, 1);
+                sprite.scale.set(0.32, 0.32, 1);
                 sprite.position.set(x, y, z);
-                groupFlowers.add(sprite);
+                wreathGroup.add(sprite);
                 flowerSprites.push(sprite);
-                
-                // Анімація пульсації (додамо пізніше в update)
             }
         }
-        
-        // Додати квітку
+
+        // Додати нову квітку
         function addFlower(emoji) {
             if (currentFlowers.length >= MAX_FLOWERS) {
-                // легке попередження - вібрація + анімація лічильника
                 if (navigator.vibrate) navigator.vibrate(200);
                 counterDiv.style.transform = 'scale(1.2)';
                 setTimeout(() => counterDiv.style.transform = '', 200);
@@ -322,118 +282,46 @@
             currentFlowers.push(emoji);
             updateCounter();
             rebuildWreath();
-            // магічний звук? (опціонально, без додаткових бібліотек)
-            // можна зробити простий "динь" через Web Audio, але залишимо вібрацію
             if (navigator.vibrate) navigator.vibrate(30);
+            // легка анімація "магії" - додаємо блиск
         }
-        
-        // Ініціалізація AR за допомогою WebAR.rocks.face
-        async function initAR() {
-            // Сховати привітання
-            welcomeScreen.style.opacity = '0';
-            setTimeout(() => welcomeScreen.style.display = 'none', 1000);
-            
-            const container = document.getElementById('ar-container');
-            // Використовуємо WebAR.rocks.face
-            // Документація: створюємо об'єкт FaceFilter
-            const faceFilter = new window.WebARFaceFilter({
-                container: container,
-                camera: { facingMode: 'user', width: 640, height: 480 },
-                // обмеження FPS для енергоефективності
-                maxFPS: 30,
-                // автозапуск камери
-                autoplay: true,
-                onLoad: () => {
-                    console.log('AR завантажено');
-                    isARReady = true;
-                    // Отримуємо Three.js сцену з faceFilter
-                    // WebAR.rocks.face надає доступ до three.js об'єктів через .three
-                    THREE = window.THREE || faceFilter.three;
-                    scene = faceFilter.scene;
-                    camera = faceFilter.camera;
-                    renderer = faceFilter.renderer;
-                    
-                    // Створюємо групу для віночка, яка буде слідувати за обличчям
-                    groupFlowers = new THREE.Group();
-                    scene.add(groupFlowers);
-                    
-                    // Позиціонуємо групу відносно голови – в реальному часі оновлюємо
-                    // WebAR.rocks.face має подію onFaceDetected, де отримуємо координати обличчя
-                    faceFilter.onFaceDetected = (face) => {
-                        if (face && groupFlowers) {
-                            // Отримуємо 3D позицію носа/чола (landmark)
-                            // У WebAR.rocks.face є face.mesh (ключові точки)
-                            // Беремо точку верхньої частини перенісся (індекс 10)
-                            if (face.mesh && face.mesh.length > 10) {
-                                const noseBridge = face.mesh[10]; // 3D позиція
-                                // Встановлюємо позицію групи віночка над носом (трохи вище)
-                                groupFlowers.position.set(noseBridge.x, noseBridge.y + 0.12, noseBridge.z);
-                            } else {
-                                // fallback – приблизно центр екрану
-                                groupFlowers.position.set(0, 0.2, -0.5);
-                            }
-                        }
-                    };
-                    
-                    // Анімаційний цикл (пульсація квіток)
-                    function animateFlowers() {
-                        if (!flowerSprites) return;
-                        const time = Date.now() * 0.008;
-                        flowerSprites.forEach((sprite, idx) => {
-                            const scale = 0.28 + Math.sin(time + idx) * 0.03;
-                            sprite.scale.set(scale, scale, 1);
-                        });
-                        requestAnimationFrame(animateFlowers);
-                    }
-                    animateFlowers();
-                    
-                    // Додаткове налаштування енергоефективності: знижуємо якість текстур
-                    if (renderer) renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-                },
-                onError: (err) => {
-                    console.error('Помилка AR:', err);
-                    alert('Не вдалося запустити камеру. Дозвольте доступ до камери.');
-                }
-            });
-            
-            // Запускаємо
-            faceFilter.start();
-            arScene = faceFilter;
-        }
-        
-        // Функція для знімка (фото з AR)
+
+        // Функція для знімка (через html2canvas або напряму з canvas)
         async function takePhoto() {
-            if (!arScene || !renderer || !scene) {
-                alert('Зачекайте, AR ще не готовий');
+            if (!mindarFace || !threeRenderer) {
+                alert('Зачекайте, AR ще запускається...');
                 return;
             }
-            // Робимо знімок canvas renderer'а
-            const canvas = renderer.domElement;
+            // Отримуємо canvas з Three.js (на ньому вже відео + 3D)
+            const canvas = threeRenderer.domElement;
             if (!canvas) return;
             const dataURL = canvas.toDataURL('image/png');
-            // Тимчасово показуємо зображення для підтвердження?
             const link = document.createElement('a');
             link.download = 'magic_wreath.png';
             link.href = dataURL;
             link.click();
-            // Вібрація як магічний спалах
             if (navigator.vibrate) navigator.vibrate(100);
         }
-        
-        // Зберегти на телефон (через share API, або завантаження)
+
         async function saveToPhone() {
-            if (!arScene || !renderer) return;
-            const canvas = renderer.domElement;
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-            const file = new File([blob], 'charming_wreath.png', { type: 'image/png' });
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: 'Мій чарівний віночок',
-                        files: [file]
-                    });
-                } catch(e) { 
-                    // fallback
+            if (!mindarFace || !threeRenderer) return;
+            const canvas = threeRenderer.domElement;
+            canvas.toBlob(async (blob) => {
+                if (navigator.share) {
+                    try {
+                        await navigator.share({
+                            title: 'Мій чарівний віночок',
+                            files: [new File([blob], 'wreath.png', { type: 'image/png' })]
+                        });
+                    } catch(e) {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'wreath.png';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                } else {
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -441,18 +329,69 @@
                     a.click();
                     URL.revokeObjectURL(url);
                 }
-            } else {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'magic_wreath.png';
-                a.click();
-                URL.revokeObjectURL(url);
-            }
+            }, 'image/png');
         }
-        
-        // Події для квіток
-        function setupUI() {
+
+        // Ініціалізація AR за допомогою MindAR
+        async function startAR() {
+            // Сховати привітання
+            welcomeScreen.style.opacity = '0';
+            setTimeout(() => welcomeScreen.style.display = 'none', 800);
+
+            const container = document.getElementById('mindar-container');
+            // Створюємо MindAR Face instance
+            mindarFace = new MindAR.Face({
+                container: container,
+                autoStart: true,        // автоматично запускає камеру
+                uiScanning: false,      // не показуємо зайві рамки
+                uiLoading: false,
+                maxTrack: 1,
+                // Оптимізація енергії: зменшуємо частоту кадрів
+                targetFrameRate: 30,
+            });
+
+            // Чекаємо, поки MindAR завантажиться і запустить камеру
+            await mindarFace.start();
+            
+            // Отримуємо Three.js сцену з MindAR
+            const threejs = mindarFace.threejs;
+            threeRenderer = threejs.renderer;
+            threeScene = threejs.scene;
+            threeCamera = threejs.camera;
+            
+            // Створюємо групу для віночка, яка буде прив'язана до обличчя
+            wreathGroup = new THREE.Group();
+            threeScene.add(wreathGroup);
+            
+            // Оновлюємо позицію віночка відносно обличчя
+            mindarFace.faceAnchor.onUpdate(() => {
+                if (wreathGroup && mindarFace.faceAnchor.group) {
+                    // Отримуємо матрицю обличчя і трохи зміщуємо вгору
+                    const facePos = mindarFace.faceAnchor.group.position;
+                    wreathGroup.position.copy(facePos);
+                    wreathGroup.position.y += 0.16;  // піднімаємо над центром обличчя
+                    wreathGroup.position.z -= 0.05;
+                }
+            });
+            
+            // Анімація пульсації квіток
+            function animate() {
+                if (!flowerSprites) return;
+                const time = Date.now() * 0.008;
+                flowerSprites.forEach((sprite, idx) => {
+                    const scale = 0.32 + Math.sin(time + idx) * 0.04;
+                    sprite.scale.set(scale, scale, 1);
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
+            
+            isARStarted = true;
+            console.log('AR успішно запущено');
+        }
+
+        // Обробники UI
+        function bindUI() {
             const flowers = document.querySelectorAll('.flower-emoji');
             flowers.forEach(flower => {
                 flower.addEventListener('click', (e) => {
@@ -461,34 +400,29 @@
                     addFlower(emoji);
                 });
             });
-            
             resetBtn.addEventListener('click', resetWreath);
             photoBtn.addEventListener('click', takePhoto);
             saveBtn.addEventListener('click', saveToPhone);
             startBtn.addEventListener('click', () => {
-                initAR();
+                startAR().catch(err => {
+                    console.error('Помилка запуску AR:', err);
+                    alert('Не вдалося отримати доступ до камери. Переконайтеся, що ви дали дозвіл.');
+                });
             });
         }
+
+        bindUI();
         
-        // Викликаємо UI налаштування
-        setupUI();
-        
-        // Адаптація до зміни розмірів
+        // Додатково: адаптація розміру
         window.addEventListener('resize', () => {
-            if (renderer && camera) {
+            if (threeRenderer && threeCamera) {
                 const width = window.innerWidth;
                 const height = window.innerHeight;
-                renderer.setSize(width, height);
-                if (camera.aspect) camera.aspect = width / height;
-                camera.updateProjectionMatrix?.();
+                threeRenderer.setSize(width, height);
+                threeCamera.aspect = width / height;
+                threeCamera.updateProjectionMatrix();
             }
         });
-        
-        // Якщо користувач захоче одразу почати без привітання - нехай натисне
-        // Додатковий захист: якщо камера не підтримується
-        if (!navigator.mediaDevices) {
-            alert('Ваш пристрій не підтримує камеру для AR');
-        }
     })();
 </script>
 </body>
