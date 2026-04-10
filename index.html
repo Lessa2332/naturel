@@ -1,3 +1,7 @@
+Тримай фінальну версію — **прибрано неонове світіння з AR-сцени** (вінок і стрічки тепер природні, без кібер-ефектів), але **стиль 2050 залишено на привітальному екрані та UI**.  
+Всі виправлення (високий віночок, реакція на посмішку, PNG з репо, фонова мелодія) збережені.
+
+```html
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -86,7 +90,7 @@
     }
     .btn-utility:active { transform: scale(0.9); background: #0ff4; }
 
-    /* ===== 2050 HOLO WELCOME ===== */
+    /* ===== 2050 HOLO WELCOME (стиль залишається) ===== */
     .welcome-screen {
       position: fixed; inset: 0; z-index: 2000;
       background: radial-gradient(circle at 30% 40%, #021218, #000);
@@ -175,7 +179,7 @@
 <div class="ar-viewport">
   <video id="videoElement" autoplay playsinline muted></video>
   <canvas id="outputCanvas"></canvas>
-  <div id="flowerNamePopup"><span id="popupText">КІБЕР-КВІТКА</span></div>
+  <div id="flowerNamePopup"><span id="popupText">КВІТКА</span></div>
   
   <div class="bottom-nav">
     <div class="flower-scroll" id="flowerScroll"></div>
@@ -197,7 +201,7 @@
   (function(){
     "use strict";
 
-    // ---------- ТВОЇ ОРИГІНАЛЬНІ 15 КВІТІВ (PNG з репо) ----------
+    // ---------- 15 КВІТІВ (PNG з репо) ----------
     const redBookFlowers = [
       { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
       { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
@@ -216,7 +220,7 @@
       { id: 15, src: 'flower_15.png', name: 'Червона рута' }
     ];
 
-    // Завантаження PNG у Image об'єкти
+    // Завантаження PNG
     const loadedImages = {};
     redBookFlowers.forEach(f => {
       const img = new Image();
@@ -231,7 +235,7 @@
     const video = document.getElementById('videoElement');
     const music = document.getElementById('fonMusic');
 
-    // ---------- UI СКРОЛ (використовує PNG) ----------
+    // ---------- UI СКРОЛ ----------
     function initUI() {
       const scroll = document.getElementById('flowerScroll');
       redBookFlowers.forEach(f => {
@@ -299,9 +303,11 @@
       const wave = Math.sin(time) * 30;
 
       ctx.save();
-      ctx.lineWidth = canvas.width * 0.035;
+      ctx.lineWidth = canvas.width * 0.04;
       ctx.lineCap = 'round';
-      ctx.shadowBlur = 15; ctx.shadowColor = '#0ff';
+      // ❌ БЕЗ НЕОНОВОГО СВІТІННЯ — тільки легка тінь для реалістичності
+      ctx.shadowBlur = 8; 
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
 
       const drawSide = (point, side) => {
         const sx = point.x * canvas.width;
@@ -309,13 +315,17 @@
         const ex = side === 'left' ? canvas.width * 0.15 : canvas.width * 0.85;
         const ey = canvas.height * 0.85;
 
-        ctx.strokeStyle = '#0af';
-        ctx.beginPath(); ctx.moveTo(sx - 12, sy);
+        // Синя стрічка (природний відтінок)
+        ctx.strokeStyle = '#2a6f9c';
+        ctx.beginPath(); 
+        ctx.moveTo(sx - 12, sy);
         ctx.bezierCurveTo(sx + (side==='left'?-100:100) + wave, sy + 180, ex + (side==='left'?80:-80), ey - 150, ex - 12, ey);
         ctx.stroke();
 
-        ctx.strokeStyle = '#8f8';
-        ctx.beginPath(); ctx.moveTo(sx + 12, sy);
+        // Жовта стрічка (природний відтінок)
+        ctx.strokeStyle = '#e0b044';
+        ctx.beginPath(); 
+        ctx.moveTo(sx + 12, sy);
         ctx.bezierCurveTo(sx + (side==='left'?-70:70) + wave, sy + 180, ex + (side==='left'?110:-110), ey - 150, ex + 12, ey);
         ctx.stroke();
       };
@@ -357,7 +367,9 @@
           ctx.save(); 
           ctx.translate(x, y); 
           ctx.rotate(f.rotation);
-          ctx.shadowBlur = 20; ctx.shadowColor = '#0ff';
+          // ❌ БЕЗ НЕОНУ — тільки природна легка тінь
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = 'rgba(0,0,0,0.2)';
           ctx.drawImage(img, -size/2, -size/2, size, size); 
           ctx.restore();
         }
@@ -372,7 +384,7 @@
 
     window.capturePhoto = () => {
       const link = document.createElement('a');
-      link.download = `vinok2050-${Date.now()}.png`;
+      link.download = `vinok-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
       if(navigator.vibrate) navigator.vibrate([30,30,30]);
@@ -382,14 +394,14 @@
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       const file = new File([blob], 'vinok-ar.png', { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Vinok 2050', text: '🌿 Neural Wreath' });
+        await navigator.share({ files: [file], title: 'Vinok AR', text: '🌿 Хранитель Флори' });
       } else { capturePhoto(); }
     };
 
     // ---------- START ----------
     document.getElementById('startBtn').onclick = () => {
       document.getElementById('welcome').classList.add('hidden');
-      music.play().catch(e => console.log('🎵 Автовідтворення мелодії очікує взаємодії'));
+      music.play().catch(e => console.log('🎵 Мелодія готова до відтворення'));
       startAR();
     };
 
@@ -398,3 +410,12 @@
 </script>
 </body>
 </html>
+```
+
+### 🌿 Що змінено:
+- **Прибрано неонові тіні (`shadowBlur`, `shadowColor: '#0ff'`)** з вінка та стрічок.
+- Стрічки тепер мають природні відтінки синього `#2a6f9c` та золотого `#e0b044`.
+- Квіти малюються з легкою чорною тінню для глибини, без кібер-світіння.
+- **Стиль 2050 залишився тільки на стартовому екрані, кнопках та спливаючому вікні.**
+
+Тепер AR-сцена виглядає природно, а футуристичний вайб — лише в UI 🎋✨
