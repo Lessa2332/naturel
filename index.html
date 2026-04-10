@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -77,7 +78,7 @@
     .item-card img { 
       width: 45px; height: 45px; object-fit: contain; 
     }
-    .item-card span { display: none; }  /* приховуємо текст */
+    .item-card span { display: none; }
 
     .action-bar { 
       display: flex; justify-content: space-between; align-items: center; 
@@ -97,7 +98,6 @@
     }
     .btn-utility:active { transform: scale(0.9); background: #0ff4; }
 
-    /* ===== WELCOME (без змін) ===== */
     .welcome-screen {
       position: fixed; inset: 0; z-index: 2000;
       background: radial-gradient(circle at 30% 40%, #021218, #000);
@@ -189,8 +189,8 @@
   <div class="bottom-nav">
     <div class="flower-scroll" id="flowerScroll"></div>
     <div class="action-bar">
-      <button class="btn-utility" onclick="resetWreath()">✕</button>
-      <div class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></div>
+      <button class="btn-utility" onclick="window.resetWreath()">✕</button>
+      <div class="shutter" onclick="window.capturePhoto()"><div class="shutter-inner"></div></div>
       <button class="btn-utility" id="shareBtn">↗</button>
     </div>
   </div>
@@ -207,13 +207,15 @@
   }
 </script>
 
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
 <script type="module">
-  // ----- Імпорт Three.js -----
   import * as THREE from 'three';
   import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-  import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // (не обов'язково, але для налагодження)
 
-  // ----- Дані квітів (ті самі) -----
+  // ----- Дані квітів -----
   const redBookFlowers = [
     { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
     { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
@@ -232,255 +234,97 @@
     { id: 15, src: 'flower_15.png', name: 'Червона рута' }
   ];
 
-  // ----- AR State (спільний із зовнішнім скриптом) -----
-  const state = window.state = { selected: [], smileScore: 0, popupTimer: null };
-  
-  // Завантажуємо зображення квітів (для CSS2D)
-  const flowerImages = {};
-  redBookFlowers.forEach(f => {
-    const img = new Image();
-    img.src = f.src;
-    flowerImages[f.id] = img;
-  });
+  // ----- Глобальний стан -----
+  window.state = { selected: [], smileScore: 0, popupTimer: null };
+  const state = window.state;
 
-  // ----- Ініціалізація Three.js -----
+  const flowerImages = {};
+  redBookFlowers.forEach(f => { const img = new Image(); img.src = f.src; flowerImages[f.id] = img; });
+
   const video = document.getElementById('videoElement');
-  const canvas = document.getElementById('outputCanvas'); // основний 2D canvas для відео
+  const canvas = document.getElementById('outputCanvas');
   const ctx = canvas.getContext('2d');
-  
-  // Створюємо окремий canvas для Three.js
+
+  // Three.js canvas
   const threeCanvas = document.createElement('canvas');
   threeCanvas.style.position = 'absolute';
-  threeCanvas.style.top = '0';
-  threeCanvas.style.left = '0';
-  threeCanvas.style.width = '100%';
-  threeCanvas.style.height = '100%';
+  threeCanvas.style.top = '0'; threeCanvas.style.left = '0';
+  threeCanvas.style.width = '100%'; threeCanvas.style.height = '100%';
   threeCanvas.style.zIndex = '15';
   threeCanvas.style.pointerEvents = 'none';
   document.querySelector('.ar-viewport').appendChild(threeCanvas);
 
   const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera.position.set(0, 0, 5);
 
-  // Освітлення
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-  scene.add(ambientLight);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
   const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.position.set(1, 2, 1);
-  scene.add(dirLight);
-  const backLight = new THREE.PointLight(0x88aaff, 0.5);
-  backLight.position.set(-1, 0.5, -1);
-  scene.add(backLight);
+  dirLight.position.set(1, 2, 1); scene.add(dirLight);
+  scene.add(new THREE.PointLight(0x88aaff, 0.5)).position.set(-1, 0.5, -1);
 
-  // ----- Створення 3D-німба (примітиви) -----
+  // Німб
   const haloGroup = new THREE.Group();
-  
-  // Головне кільце (гілочка) - тор
-  const torusMat = new THREE.MeshStandardMaterial({ 
-    color: 0x3b8520, 
-    roughness: 0.7,
-    emissive: new THREE.Color(0x1a4a0a),
-    emissiveIntensity: 0.3
-  });
+  const torusMat = new THREE.MeshStandardMaterial({ color: 0x3b8520, roughness: 0.7, emissive: new THREE.Color(0x1a4a0a), emissiveIntensity: 0.3 });
   const torus = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 16, 64), torusMat);
-  torus.rotation.x = Math.PI / 2;
-  haloGroup.add(torus);
+  torus.rotation.x = Math.PI / 2; haloGroup.add(torus);
+  const torus2 = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.03, 16, 64), new THREE.MeshStandardMaterial({ color: 0x6ab04c, roughness: 0.5 }));
+  torus2.rotation.x = Math.PI / 2; haloGroup.add(torus2);
 
-  // Друге кільце (тонше, світліше)
-  const torus2Mat = new THREE.MeshStandardMaterial({ color: 0x6ab04c, roughness: 0.5 });
-  const torus2 = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.03, 16, 64), torus2Mat);
-  torus2.rotation.x = Math.PI / 2;
-  haloGroup.add(torus2);
-
-  // Листочки (маленькі конуси)
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x4c9a2a, roughness: 0.6 });
   const leafMatLight = new THREE.MeshStandardMaterial({ color: 0x7dcc5a, roughness: 0.5 });
-  
   for (let i = 0; i < 24; i++) {
     const angle = (i / 24) * Math.PI * 2;
     const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 5), i % 2 === 0 ? leafMat : leafMatLight);
     leaf.position.x = Math.cos(angle) * 0.5;
     leaf.position.z = Math.sin(angle) * 0.5;
-    leaf.rotation.y = angle;
-    leaf.rotation.x = 0.3;
-    leaf.rotation.z = 0.2;
+    leaf.rotation.y = angle; leaf.rotation.x = 0.3; leaf.rotation.z = 0.2;
     haloGroup.add(leaf);
   }
-
-  // Додаткові дрібні листочки всередині
   const smallLeafMat = new THREE.MeshStandardMaterial({ color: 0x8fdf6a });
   for (let i = 0; i < 16; i++) {
     const angle = (i / 16) * Math.PI * 2 + 0.5;
     const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.08, 4), smallLeafMat);
     leaf.position.x = Math.cos(angle) * 0.4;
     leaf.position.z = Math.sin(angle) * 0.4;
-    leaf.rotation.y = angle;
-    leaf.rotation.x = -0.2;
-    leaf.rotation.z = 0.1;
+    leaf.rotation.y = angle; leaf.rotation.x = -0.2; leaf.rotation.z = 0.1;
     haloGroup.add(leaf);
   }
-
   scene.add(haloGroup);
 
-  // ----- CSS2DRenderer для квітів (PNG) -----
   const labelRenderer = new CSS2DRenderer();
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
   labelRenderer.domElement.style.position = 'absolute';
-  labelRenderer.domElement.style.top = '0';
-  labelRenderer.domElement.style.left = '0';
+  labelRenderer.domElement.style.top = '0'; labelRenderer.domElement.style.left = '0';
   labelRenderer.domElement.style.zIndex = '16';
   labelRenderer.domElement.style.pointerEvents = 'none';
   document.querySelector('.ar-viewport').appendChild(labelRenderer.domElement);
 
   const flowerLabels = [];
 
-  // Функція оновлення квітів при зміні state.selected
   function updateFlowerSprites() {
-    // Видаляємо старі
     flowerLabels.forEach(item => scene.remove(item.label));
     flowerLabels.length = 0;
-    
     const count = state.selected.length;
     if (count === 0) return;
-    
     state.selected.forEach((flower, index) => {
-      const div = document.createElement('div');
       const img = flowerImages[flower.id];
       if (!img) return;
-      
-      // Створюємо елемент із зображенням
+      const div = document.createElement('div');
       div.innerHTML = `<img src="${img.src}" style="width:60px; height:60px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));">`;
       const label = new CSS2DObject(div);
-      
-      // Кут розміщення
       let angle = (index / count) * Math.PI * 2;
-      if (flower.angleOffset === undefined) {
-        flower.angleOffset = (Math.random() - 0.5) * 0.3;
-      }
+      if (flower.angleOffset === undefined) flower.angleOffset = (Math.random() - 0.5) * 0.3;
       angle += flower.angleOffset;
-      
-      label.userData = { angle, offsetY: flower.offsetY || 0 };
+      label.userData = { angle };
       scene.add(label);
-      flowerLabels.push({ label, flower });
+      flowerLabels.push({ label });
     });
   }
 
-  // Слідкуємо за змінами state.selected
   let lastSelectedLength = 0;
-  
-  // ----- Оновлення позиції німба за Face Mesh -----
-  function updateHaloPosition(landmarks) {
-    if (!landmarks) return;
-    
-    // Використовуємо точки для визначення центру голови
-    const leftTemple = landmarks[234];
-    const rightTemple = landmarks[454];
-    const forehead = landmarks[10];
-    
-    // Нормалізовані координати (0..1) -> Three.js простір
-    const centerX = (leftTemple.x + rightTemple.x) / 2;
-    const centerY = (leftTemple.y + rightTemple.y) / 2 - 0.08; // трохи вище скронь
-    const centerZ = landmarks[1].z; // ніс для глибини
-    
-    // Масштабуємо до розмірів екрана
-    const scale = 5;
-    const x = (centerX - 0.5) * scale;
-    const y = -(centerY - 0.5) * scale;
-    const z = -centerZ * scale - 1; // трохи попереду
-    
-    haloGroup.position.set(x, y, z);
-    
-    // Оцінка повороту голови (спрощено)
-    const dx = rightTemple.x - leftTemple.x;
-    const dy = rightTemple.y - leftTemple.y;
-    const roll = Math.atan2(dy, dx);
-    haloGroup.rotation.z = roll;
-    haloGroup.rotation.x = 0.1; // легкий нахил вперед
-    
-    // Оновлюємо позиції квітів
-    const radius = 0.65;
-    flowerLabels.forEach((item, i) => {
-      const angle = item.label.userData.angle;
-      const flowerX = x + Math.cos(angle) * radius;
-      const flowerY = y + Math.sin(angle) * radius * 0.6; // еліпс
-      const flowerZ = z + 0.1;
-      item.label.position.set(flowerX, flowerY, flowerZ);
-    });
-  }
-
-  // ----- Інтеграція з існуючим Face Mesh (через глобальну функцію) -----
-  // Ми перевизначимо window.onResults, щоб викликати наш код
-  const originalOnResults = window.onResults; // на випадок, якщо була
-  window.onResults = function(results) {
-    // Малюємо відео на основному canvas
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-    
-    if (results.multiFaceLandmarks?.[0]) {
-      const landmarks = results.multiFaceLandmarks[0];
-      
-      // Оновлюємо 3D-німб
-      updateHaloPosition(landmarks);
-      
-      // Стрічки малюємо на основному canvas (2D)
-      const mouthLeft = landmarks[61], mouthRight = landmarks[291];
-      const mouthWidth = Math.hypot(mouthRight.x - mouthLeft.x, mouthRight.y - mouthLeft.y);
-      state.smileScore = Math.max(0, (mouthWidth - 0.13) * 25);
-      
-      if (state.smileScore > 0.5) {
-        drawDoubleRibbons2D(landmarks, ctx, canvas);
-      }
-    }
-    ctx.restore();
-    
-    // Рендеримо Three.js
-    renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
-  };
-
-  // Функція малювання стрічок (2D) — перенесена сюди
-  function drawDoubleRibbons2D(landmarks, ctx, canvas) {
-    const left = landmarks[234], right = landmarks[454];
-    const headW = Math.abs(right.x * canvas.width - left.x * canvas.width);
-    const time = Date.now() / 250;
-    const wave = Math.sin(time) * 30;
-
-    ctx.save();
-    ctx.lineWidth = canvas.width * 0.04;
-    ctx.lineCap = 'round';
-    ctx.shadowBlur = 8; 
-    ctx.shadowColor = 'rgba(0,0,0,0.3)';
-
-    const drawSide = (point, side) => {
-      const sx = point.x * canvas.width;
-      const sy = point.y * canvas.height - (headW * 0.48);
-      const ex = side === 'left' ? canvas.width * 0.15 : canvas.width * 0.85;
-      const ey = canvas.height * 0.85;
-
-      ctx.strokeStyle = '#2a6f9c';
-      ctx.beginPath(); 
-      ctx.moveTo(sx - 12, sy);
-      ctx.bezierCurveTo(sx + (side==='left'?-100:100) + wave, sy + 180, ex + (side==='left'?80:-80), ey - 150, ex - 12, ey);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#e0b044';
-      ctx.beginPath(); 
-      ctx.moveTo(sx + 12, sy);
-      ctx.bezierCurveTo(sx + (side==='left'?-70:70) + wave, sy + 180, ex + (side==='left'?110:-110), ey - 150, ex + 12, ey);
-      ctx.stroke();
-    };
-
-    drawSide(left, 'left');
-    drawSide(right, 'right');
-    ctx.restore();
-  }
-
-  // ----- Реакція на зміну кількості квітів -----
   setInterval(() => {
     if (state.selected.length !== lastSelectedLength) {
       lastSelectedLength = state.selected.length;
@@ -488,43 +332,177 @@
     }
   }, 100);
 
-  // ----- Обробка ресайзу -----
-  window.addEventListener('resize', onWindowResize, false);
-  function onWindowResize() {
+  function updateHaloPosition(landmarks) {
+    if (!landmarks) return;
+    const left = landmarks[234], right = landmarks[454];
+    const centerX = (left.x + right.x) / 2;
+    const centerY = (left.y + right.y) / 2 - 0.08;
+    const centerZ = landmarks[1].z;
+    const scale = 5;
+    const x = (centerX - 0.5) * scale;
+    const y = -(centerY - 0.5) * scale;
+    const z = -centerZ * scale - 1;
+    haloGroup.position.set(x, y, z);
+    const dx = right.x - left.x, dy = right.y - left.y;
+    haloGroup.rotation.z = Math.atan2(dy, dx);
+    haloGroup.rotation.x = 0.1;
+    const radius = 0.65;
+    flowerLabels.forEach((item) => {
+      const angle = item.label.userData.angle;
+      item.label.position.set(
+        x + Math.cos(angle) * radius,
+        y + Math.sin(angle) * radius * 0.6,
+        z + 0.1
+      );
+    });
+  }
+
+  function drawDoubleRibbons2D(landmarks, ctx, canvas) {
+    const left = landmarks[234], right = landmarks[454];
+    const headW = Math.abs(right.x * canvas.width - left.x * canvas.width);
+    const time = Date.now() / 250, wave = Math.sin(time) * 30;
+    ctx.save();
+    ctx.lineWidth = canvas.width * 0.04;
+    ctx.lineCap = 'round';
+    ctx.shadowBlur = 8; ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    const drawSide = (point, side) => {
+      const sx = point.x * canvas.width;
+      const sy = point.y * canvas.height - (headW * 0.48);
+      const ex = side === 'left' ? canvas.width * 0.15 : canvas.width * 0.85;
+      const ey = canvas.height * 0.85;
+      ctx.strokeStyle = '#2a6f9c';
+      ctx.beginPath(); ctx.moveTo(sx - 12, sy);
+      ctx.bezierCurveTo(sx + (side==='left'?-100:100) + wave, sy + 180, ex + (side==='left'?80:-80), ey - 150, ex - 12, ey);
+      ctx.stroke();
+      ctx.strokeStyle = '#e0b044';
+      ctx.beginPath(); ctx.moveTo(sx + 12, sy);
+      ctx.bezierCurveTo(sx + (side==='left'?-70:70) + wave, sy + 180, ex + (side==='left'?110:-110), ey - 150, ex + 12, ey);
+      ctx.stroke();
+    };
+    drawSide(left, 'left'); drawSide(right, 'right');
+    ctx.restore();
+  }
+
+  window.onResults = function(results) {
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+    if (results.multiFaceLandmarks?.[0]) {
+      const landmarks = results.multiFaceLandmarks[0];
+      updateHaloPosition(landmarks);
+      const mouthLeft = landmarks[61], mouthRight = landmarks[291];
+      const mouthWidth = Math.hypot(mouthRight.x - mouthLeft.x, mouthRight.y - mouthLeft.y);
+      state.smileScore = Math.max(0, (mouthWidth - 0.13) * 25);
+      if (state.smileScore > 0.5) drawDoubleRibbons2D(landmarks, ctx, canvas);
+    }
+    ctx.restore();
+    renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
+  };
+
+  window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     labelRenderer.setSize(window.innerWidth, window.innerHeight);
-  }
+  });
 
-  // ----- Старт AR (викликається з головного скрипту) -----
-  // Залишаємо глобальну функцію startAR, якщо її немає
-  if (!window.startAR) {
-    window.startAR = async function() {
-      const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-      faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
-      faceMesh.onResults(window.onResults);
-      new Camera(video, {
-        onFrame: async () => {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          await faceMesh.send({image: video});
-        },
-        width: 1280, height: 720
-      }).start();
-    };
-  }
-
-  console.log('🌟 3D Німб готовий!');
+  // Старт AR
+  window.startAR = async function() {
+    const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
+    faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+    faceMesh.onResults(window.onResults);
+    new Camera(video, {
+      onFrame: async () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        await faceMesh.send({image: video});
+      },
+      width: 1280, height: 720
+    }).start();
+  };
 </script>
 
-<!-- Старий скрипт із MediaPipe Camera треба залишити, але він буде використовувати window.onResults -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script>
-  // Решта логіки (кнопки, UI, музика) залишається без змін
-  // Тільки переконайтеся, що startAR викликається після кліку на старт
-  // і що функція onResults перевизначена вище
+  // ----- UI та керування -----
+  const music = document.getElementById('fonMusic');
+  const popup = document.getElementById('flowerNamePopup');
+  const popupText = document.getElementById('popupText');
+
+  // Ініціалізація скролу з квітами
+  (function initUI() {
+    const scroll = document.getElementById('flowerScroll');
+    const flowers = [
+      { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
+      { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
+      { id: 3, src: 'flower_3.png', name: 'Тюльпан дібровний' },
+      { id: 4, src: 'flower_4.png', name: 'Горицвіт весняний' },
+      { id: 5, src: 'flower_5.png', name: 'Півники борові' },
+      { id: 6, src: 'flower_6.png', name: 'Сон-трава велика' },
+      { id: 7, src: 'flower_7.png', name: 'Дзвоники карпатські' },
+      { id: 8, src: 'flower_8.png', name: 'Тирлич безстебловий' },
+      { id: 9, src: 'flower_9.png', name: 'Айстра альпійська' },
+      { id: 10, src: 'flower_10.png', name: 'Фіалка кримська' },
+      { id: 11, src: 'flower_11.png', name: 'Підсніжник білосніжний' },
+      { id: 12, src: 'flower_12.png', name: 'Зозулині черевички' },
+      { id: 13, src: 'flower_13.png', name: 'Лілія лісова' },
+      { id: 14, src: 'flower_14.png', name: 'Едельвейс альпійський' },
+      { id: 15, src: 'flower_15.png', name: 'Червона рута' }
+    ];
+    flowers.forEach(f => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `<img src="${f.src}" alt="${f.name}">`;
+      card.onclick = () => {
+        popupText.textContent = f.name;
+        popup.classList.add('show');
+        clearTimeout(window.state.popupTimer);
+        window.state.popupTimer = setTimeout(() => popup.classList.remove('show'), 2500);
+        if (window.state.selected.length < 12) {
+          window.state.selected.push({ id: f.id, scale: 0, angleOffset: (Math.random()-0.5)*0.3 });
+          if (navigator.vibrate) navigator.vibrate(40);
+        }
+      };
+      scroll.appendChild(card);
+    });
+  })();
+
+  window.resetWreath = () => {
+    window.state.selected = [];
+    if (navigator.vibrate) navigator.vibrate(20);
+  };
+
+  window.capturePhoto = () => {
+    const canvas = document.getElementById('outputCanvas');
+    const link = document.createElement('a');
+    link.download = `vinok-${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    if (navigator.vibrate) navigator.vibrate([30,30,30]);
+  };
+
+  document.getElementById('shareBtn').onclick = async () => {
+    const canvas = document.getElementById('outputCanvas');
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    const file = new File([blob], 'vinok-ar.png', { type: 'image/png' });
+    const shareData = {
+      files: [file],
+      title: 'Мій магічний вінок 🌿',
+      text: 'Я оберігаю рідкісні квіти України! Мій магічний вінок активовано. Спробуй і ти: https://lessa2332.github.io/naturel/',
+      url: 'https://lessa2332.github.io/naturel/'
+    };
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share(shareData); } catch (e) { if (e.name !== 'AbortError') capturePhoto(); }
+    } else if (navigator.share) {
+      try { await navigator.share({ title: shareData.title, text: shareData.text, url: shareData.url }); } catch { capturePhoto(); }
+    } else { capturePhoto(); }
+  };
+
+  document.getElementById('startBtn').onclick = () => {
+    document.getElementById('welcome').classList.add('hidden');
+    music.play().catch(e => console.log('🎵 Мелодія готова'));
+    window.startAR();
+  };
 </script>
 </body>
 </html>
