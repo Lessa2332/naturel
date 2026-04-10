@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -87,7 +86,7 @@
     }
     .btn-utility:active { transform: scale(0.9); background: #0ff4; }
 
-    /* ===== 2050 HOLO WELCOME (стиль залишається) ===== */
+    /* ===== 2050 HOLO WELCOME ===== */
     .welcome-screen {
       position: fixed; inset: 0; z-index: 2000;
       background: radial-gradient(circle at 30% 40%, #021218, #000);
@@ -162,7 +161,6 @@
   <div style="width: 12px; height: 12px; background: #0ff; border-radius: 50%; box-shadow: 0 0 20px #0ff;"></div>
 </a>
 
-<!-- 2050 WELCOME SCREEN -->
 <div class="welcome-screen" id="welcome">
   <div class="holo-ring"></div>
   <div class="ornament-2050"></div>
@@ -172,7 +170,6 @@
   <p style="margin-top: 30px; color: #6cf; font-size: 12px; letter-spacing: 3px;">NEURAL LINK · 2050</p>
 </div>
 
-<!-- AR VIEW -->
 <div class="ar-viewport">
   <video id="videoElement" autoplay playsinline muted></video>
   <canvas id="outputCanvas"></canvas>
@@ -188,7 +185,6 @@
   </div>
 </div>
 
-<!-- 🎵 ФОНОВА МЕЛОДІЯ -->
 <audio id="fonMusic" src="fon.mp3" loop preload="auto"></audio>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
@@ -198,7 +194,6 @@
   (function(){
     "use strict";
 
-    // ---------- 15 КВІТІВ (PNG з репо) ----------
     const redBookFlowers = [
       { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
       { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
@@ -217,7 +212,6 @@
       { id: 15, src: 'flower_15.png', name: 'Червона рута' }
     ];
 
-    // Завантаження PNG
     const loadedImages = {};
     redBookFlowers.forEach(f => {
       const img = new Image();
@@ -225,14 +219,12 @@
       loadedImages[f.id] = img;
     });
 
-    // ---------- AR STATE ----------
     const state = { selected: [], smileScore: 0, popupTimer: null };
     const canvas = document.getElementById('outputCanvas');
     const ctx = canvas.getContext('2d');
     const video = document.getElementById('videoElement');
     const music = document.getElementById('fonMusic');
 
-    // ---------- UI СКРОЛ ----------
     function initUI() {
       const scroll = document.getElementById('flowerScroll');
       redBookFlowers.forEach(f => {
@@ -242,7 +234,12 @@
         card.onclick = () => {
           showName(f.name);
           if(state.selected.length < 12) {
-            state.selected.push({ id: f.id, scale: 0, rotation: (Math.random()-0.5)*0.4 });
+            state.selected.push({ 
+              id: f.id, 
+              scale: 0, 
+              rotation: (Math.random()-0.5)*0.4,
+              offsetY: (Math.random() - 0.5) * 0.15  // випадковий вертикальний зсув для природності
+            });
             if(navigator.vibrate) navigator.vibrate(40);
           }
         };
@@ -258,7 +255,6 @@
       state.popupTimer = setTimeout(() => p.classList.remove('show'), 2500);
     }
 
-    // ---------- FACEMESH ----------
     async function startAR() {
       const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
       faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
@@ -282,7 +278,6 @@
       if (results.multiFaceLandmarks?.[0]) {
         const landmarks = results.multiFaceLandmarks[0];
         
-        // Посмішка (ширина рота)
         const mouthLeft = landmarks[61], mouthRight = landmarks[291];
         const mouthWidth = Math.hypot(mouthRight.x - mouthLeft.x, mouthRight.y - mouthLeft.y);
         state.smileScore = Math.max(0, (mouthWidth - 0.13) * 25);
@@ -302,7 +297,6 @@
       ctx.save();
       ctx.lineWidth = canvas.width * 0.04;
       ctx.lineCap = 'round';
-      // ❌ БЕЗ НЕОНОВОГО СВІТІННЯ — тільки легка тінь для реалістичності
       ctx.shadowBlur = 8; 
       ctx.shadowColor = 'rgba(0,0,0,0.3)';
 
@@ -312,14 +306,12 @@
         const ex = side === 'left' ? canvas.width * 0.15 : canvas.width * 0.85;
         const ey = canvas.height * 0.85;
 
-        // Синя стрічка (природний відтінок)
         ctx.strokeStyle = '#2a6f9c';
         ctx.beginPath(); 
         ctx.moveTo(sx - 12, sy);
         ctx.bezierCurveTo(sx + (side==='left'?-100:100) + wave, sy + 180, ex + (side==='left'?80:-80), ey - 150, ex - 12, ey);
         ctx.stroke();
 
-        // Жовта стрічка (природний відтінок)
         ctx.strokeStyle = '#e0b044';
         ctx.beginPath(); 
         ctx.moveTo(sx + 12, sy);
@@ -334,8 +326,10 @@
 
     function drawWreath(landmarks) {
       const headW = Math.abs(landmarks[454].x * canvas.width - landmarks[234].x * canvas.width);
-      const raiseSide = headW * 0.48;
-      const raiseTop  = headW * 0.68;
+      
+      // Змінено коефіцієнти для більш природного провисання вінка
+      const raiseSide = headW * 0.48;      // краї все ще трохи підняті
+      const raiseTop  = headW * 0.35;      // центр опущений нижче — вінок провисає
 
       const p0 = { 
         x: landmarks[234].x * canvas.width, 
@@ -353,8 +347,19 @@
       state.selected.forEach((f, i) => {
         const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
         const mt = 1 - t;
-        const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
-        const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
+        
+        // Базова позиція на квадратичній кривій Безьє
+        let x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
+        let y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
+        
+        // Додаємо вертикальний зсув для кожної квітки (природна нерівність)
+        if (f.offsetY !== undefined) {
+          y += headW * 0.1 * f.offsetY;
+        } else {
+          // Якщо з якоїсь причини offsetY відсутній, генеруємо на льоту
+          f.offsetY = (Math.random() - 0.5) * 0.15;
+          y += headW * 0.1 * f.offsetY;
+        }
 
         if(f.scale < 1) f.scale += 0.08;
         const size = (headW * 0.3) * f.scale * (1 + state.smileScore * 0.2);
@@ -364,7 +369,6 @@
           ctx.save(); 
           ctx.translate(x, y); 
           ctx.rotate(f.rotation);
-          // ❌ БЕЗ НЕОНУ — тільки природна легка тінь
           ctx.shadowBlur = 10;
           ctx.shadowColor = 'rgba(0,0,0,0.2)';
           ctx.drawImage(img, -size/2, -size/2, size, size); 
@@ -373,7 +377,6 @@
       });
     }
 
-    // ---------- CONTROLS ----------
     window.resetWreath = () => {
       state.selected = [];
       if(navigator.vibrate) navigator.vibrate(20);
@@ -387,15 +390,45 @@
       if(navigator.vibrate) navigator.vibrate([30,30,30]);
     };
 
+    // Оновлений shareBtn із потрібним текстом та посиланням
     document.getElementById('shareBtn').onclick = async () => {
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       const file = new File([blob], 'vinok-ar.png', { type: 'image/png' });
+      
+      const shareData = {
+        files: [file],
+        title: 'Мій магічний вінок 🌿',
+        text: 'Я оберігаю рідкісні квіти України! Мій магічний вінок активовано. Спробуй і ти: https://lessa2332.github.io/naturel/',
+        url: 'https://lessa2332.github.io/naturel/'
+      };
+
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Vinok AR', text: '🌿 Хранитель Флори' });
-      } else { capturePhoto(); }
+        try {
+          await navigator.share(shareData);
+        } catch (e) {
+          // Якщо користувач скасував шеринг — нічого не робимо
+          if (e.name !== 'AbortError') {
+            capturePhoto(); // fallback
+          }
+        }
+      } else {
+        // Якщо браузер не підтримує шеринг файлів, пробуємо поділитися лише текстом і URL
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: shareData.title,
+              text: shareData.text,
+              url: shareData.url
+            });
+          } catch (e) {
+            capturePhoto();
+          }
+        } else {
+          capturePhoto();
+        }
+      }
     };
 
-    // ---------- START ----------
     document.getElementById('startBtn').onclick = () => {
       document.getElementById('welcome').classList.add('hidden');
       music.play().catch(e => console.log('🎵 Мелодія готова до відтворення'));
