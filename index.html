@@ -312,9 +312,23 @@
     
     const shareData = {
         files: [file],
-        title: 'Місія: Хранитель Флори',
-        text: 'Я оберігаю рідкісні квіти України! Мій магічний вінок активовано. Спробуй і ти: [встав тут посилання на свій сайт]'
+        title: 'Місія: Хранитель Флори 🇺🇦',
+        // Автоматично бере посилання на твій сайт:
+        text: 'Я оберігаю рідкісні квіти України! Мій магічний вінок активовано. Спробуй і ти: ' + window.location.href
     };
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+            await navigator.share(shareData);
+        } catch (err) {
+            console.log('Помилка шерингу:', err);
+            capturePhoto(); // Скачуємо, якщо збій
+        }
+    } else {
+        capturePhoto(); // Скачуємо, якщо браузер не підтримує
+    }
+};
+
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
