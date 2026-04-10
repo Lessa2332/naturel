@@ -234,11 +234,11 @@
         card.onclick = () => {
           showName(f.name);
           if(state.selected.length < 12) {
+            // Додаємо квітку з кутом для розміщення по колу
             state.selected.push({ 
               id: f.id, 
               scale: 0, 
-              rotation: (Math.random()-0.5)*0.4,
-              offsetY: (Math.random() - 0.5) * 0.15  // випадковий вертикальний зсув для природності
+              angleOffset: 0 // буде перераховуватись при малюванні
             });
             if(navigator.vibrate) navigator.vibrate(40);
           }
@@ -283,11 +283,14 @@
         state.smileScore = Math.max(0, (mouthWidth - 0.13) * 25);
         
         if(state.smileScore > 0.5) drawDoubleRibbons(landmarks);
-        drawWreath(landmarks);
+        
+        // Малюємо новий вінок-німб
+        drawHaloWreath(landmarks);
       }
       ctx.restore();
     }
 
+    // Функція малювання стрічок (без змін)
     function drawDoubleRibbons(landmarks) {
       const left = landmarks[234], right = landmarks[454];
       const headW = Math.abs(right.x * canvas.width - left.x * canvas.width);
@@ -324,54 +327,132 @@
       ctx.restore();
     }
 
-    function drawWreath(landmarks) {
-      const headW = Math.abs(landmarks[454].x * canvas.width - landmarks[234].x * canvas.width);
+    // НОВА ФУНКЦІЯ: малює основу вінка-німба (гілочки та листочки)
+    function drawHaloBase(centerX, centerY, radiusX, radiusY) {
+      const steps = 36; // кількість сегментів для кола
+      ctx.save();
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = 'rgba(0,40,0,0.5)';
       
-      // Змінено коефіцієнти для більш природного провисання вінка
-      const raiseSide = headW * 0.48;      // краї все ще трохи підняті
-      const raiseTop  = headW * 0.35;      // центр опущений нижче — вінок провисає
+      // Малюємо гілочки (лінії) по колу
+      ctx.lineWidth = radiusX * 0.12;
+      ctx.strokeStyle = '#2d5e1e';
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const angle = (i / steps) * Math.PI * 2;
+        const x = centerX + Math.cos(angle) * radiusX;
+        const y = centerY + Math.sin(angle) * radiusY;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
 
-      const p0 = { 
-        x: landmarks[234].x * canvas.width, 
-        y: landmarks[234].y * canvas.height - raiseSide 
-      };
-      const p2 = { 
-        x: landmarks[454].x * canvas.width, 
-        y: landmarks[454].y * canvas.height - raiseSide 
-      };
-      const p1 = { 
-        x: (p0.x + p2.x) / 2, 
-        y: (landmarks[10].y * canvas.height) - raiseTop 
-      };
+      // Друга гілочка трохи зміщена для об'єму
+      ctx.lineWidth = radiusX * 0.08;
+      ctx.strokeStyle = '#3f7a2a';
+      ctx.beginPath();
+      for (let i = 0; i <= steps; i++) {
+        const angle = (i / steps) * Math.PI * 2 + 0.2;
+        const x = centerX + Math.cos(angle) * (radiusX * 0.92);
+        const y = centerY + Math.sin(angle) * (radiusY * 0.92);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
 
-      state.selected.forEach((f, i) => {
-        const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
-        const mt = 1 - t;
+      // Малюємо листочки по всьому колу
+      ctx.fillStyle = '#4c9a2a';
+      ctx.shadowBlur = 6;
+      const leafCount = 24;
+      for (let i = 0; i < leafCount; i++) {
+        const angle = (i / leafCount) * Math.PI * 2;
+        const x = centerX + Math.cos(angle) * radiusX;
+        const y = centerY + Math.sin(angle) * radiusY;
         
-        // Базова позиція на квадратичній кривій Безьє
-        let x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
-        let y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
-        
-        // Додаємо вертикальний зсув для кожної квітки (природна нерівність)
-        if (f.offsetY !== undefined) {
-          y += headW * 0.1 * f.offsetY;
-        } else {
-          // Якщо з якоїсь причини offsetY відсутній, генеруємо на льоту
-          f.offsetY = (Math.random() - 0.5) * 0.15;
-          y += headW * 0.1 * f.offsetY;
+        // Маленький листочок (еліпс)
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle + 0.8); // трохи повертаємо для природності
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radiusX * 0.1, radiusY * 0.06, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#3b8520';
+        ctx.fill();
+        ctx.strokeStyle = '#1e4a0e';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Додаємо кілька світліших листочків для об'єму
+      ctx.fillStyle = '#6ab04c';
+      for (let i = 0; i < 16; i++) {
+        const angle = (i / 16) * Math.PI * 2 + 0.5;
+        const x = centerX + Math.cos(angle) * (radiusX * 0.98);
+        const y = centerY + Math.sin(angle) * (radiusY * 0.98);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle - 0.3);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, radiusX * 0.07, radiusY * 0.04, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // НОВА ФУНКЦІЯ: вінок-німб із квітами
+    function drawHaloWreath(landmarks) {
+      // Визначаємо центр голови (над чолом і між скронями)
+      const forehead = landmarks[10];       // центр чола
+      const leftTemple = landmarks[234];
+      const rightTemple = landmarks[454];
+      
+      const centerX = (leftTemple.x + rightTemple.x) / 2 * canvas.width;
+      // Центр по Y: беремо точку чола і піднімаємо її вище, щоб німб був над головою
+      const headTopY = (forehead.y * canvas.height) - (canvas.height * 0.12);
+      
+      // Розраховуємо радіуси еліпса
+      const headWidth = Math.abs(rightTemple.x - leftTemple.x) * canvas.width;
+      const radiusX = headWidth * 0.65;      // горизонтальний радіус
+      const radiusY = headWidth * 0.4;       // вертикальний радіус (менший для перспективи)
+      
+      // Малюємо зелену основу (гілочки + листочки)
+      drawHaloBase(centerX, headTopY, radiusX, radiusY);
+
+      // Розміщуємо квіти рівномірно по еліпсу
+      const count = state.selected.length;
+      if (count === 0) return;
+
+      state.selected.forEach((flower, index) => {
+        // Кут розміщення: рівномірно по колу, але можна трохи змістити для природності
+        let angle = (index / count) * Math.PI * 2;
+        // Невеликий випадковий зсув для кожної квітки, щоб не було ідеально рівно
+        if (flower.angleOffset === undefined) {
+          flower.angleOffset = (Math.random() - 0.5) * 0.3;
         }
-
-        if(f.scale < 1) f.scale += 0.08;
-        const size = (headW * 0.3) * f.scale * (1 + state.smileScore * 0.2);
-        const img = loadedImages[f.id];
-
-        if(img && img.complete) {
-          ctx.save(); 
-          ctx.translate(x, y); 
-          ctx.rotate(f.rotation);
+        angle += flower.angleOffset;
+        
+        // Координати на еліпсі
+        const x = centerX + Math.cos(angle) * radiusX;
+        const y = headTopY + Math.sin(angle) * radiusY;
+        
+        // Масштабування квітки
+        if (flower.scale === undefined) flower.scale = 0;
+        if (flower.scale < 1) flower.scale += 0.08;
+        
+        // Розмір квітки залежить від кількості (щоб вміщались) та посмішки
+        const baseSize = headWidth * (0.25 / Math.max(1, count * 0.3));
+        const size = baseSize * flower.scale * (1 + state.smileScore * 0.15);
+        
+        const img = loadedImages[flower.id];
+        if (img && img.complete) {
+          ctx.save();
+          ctx.translate(x, y);
+          // Трохи повертаємо квітку, щоб дивилась назовні
+          ctx.rotate(angle + Math.PI/2);
           ctx.shadowBlur = 10;
-          ctx.shadowColor = 'rgba(0,0,0,0.2)';
-          ctx.drawImage(img, -size/2, -size/2, size, size); 
+          ctx.shadowColor = 'rgba(0,0,0,0.3)';
+          ctx.drawImage(img, -size/2, -size/2, size, size);
           ctx.restore();
         }
       });
@@ -390,7 +471,6 @@
       if(navigator.vibrate) navigator.vibrate([30,30,30]);
     };
 
-    // Оновлений shareBtn із потрібним текстом та посиланням
     document.getElementById('shareBtn').onclick = async () => {
       const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
       const file = new File([blob], 'vinok-ar.png', { type: 'image/png' });
@@ -406,13 +486,11 @@
         try {
           await navigator.share(shareData);
         } catch (e) {
-          // Якщо користувач скасував шеринг — нічого не робимо
           if (e.name !== 'AbortError') {
-            capturePhoto(); // fallback
+            capturePhoto();
           }
         }
       } else {
-        // Якщо браузер не підтримує шеринг файлів, пробуємо поділитися лише текстом і URL
         if (navigator.share) {
           try {
             await navigator.share({
