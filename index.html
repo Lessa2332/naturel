@@ -1,365 +1,400 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0d1a0d">
-    <title>Vinok AR · Хранителі Флори</title>
-    <style>
-        :root {
-            --gold: #f3cf8a; --white: #ffffff;
-            --glass: rgba(0, 0, 0, 0.65); --blur: blur(25px);
-            --neon: #00ff88; --deep-green: #0d1a0d;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f1a">
+  <title>VINOK 2050 · SMARTLESSA</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: #000;
+      font-family: 'Segoe UI', 'Exo 2', system-ui, sans-serif;
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+    }
 
-        body {
-            background: #000;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            color: var(--white);
-            height: 100vh;
-            overflow: hidden;
-            position: fixed; width: 100%;
-        }
+    #videoElement, #outputCanvas {
+      position: absolute; top: 50%; left: 50%;
+      width: 100%; height: 100%; object-fit: cover;
+      transform: translate(-50%, -50%) scaleX(-1);
+      z-index: 10;
+    }
 
-        /* Viewport Layout */
-        #videoElement, #outputCanvas {
-            position: absolute; top: 50%; left: 50%;
-            width: 100%; height: 100%; object-fit: cover;
-            transform: translate(-50%, -50%) scaleX(-1);
-            z-index: 10;
-        }
+    .author-badge {
+      position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px;
+      z-index: 1000; display: flex; align-items: center; gap: 10px;
+      background: rgba(0, 255, 255, 0.1); backdrop-filter: blur(15px);
+      padding: 10px 18px; border-radius: 50px; border: 1px solid rgba(0, 255, 255, 0.4);
+      text-decoration: none; transition: 0.3s;
+      box-shadow: 0 0 20px rgba(0, 255, 200, 0.3);
+    }
+    .author-badge span {
+      color: #a0f0ff; font-size: 11px; letter-spacing: 3px; font-weight: bold; text-transform: uppercase;
+      text-shadow: 0 0 8px cyan;
+    }
 
-        /* 2026 Author Badge */
-        .author-badge {
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px;
-            z-index: 1000; display: flex; align-items: center; gap: 10px;
-            background: var(--glass); backdrop-filter: var(--blur);
-            padding: 10px 18px; border-radius: 50px; border: 1px solid rgba(255,255,255,0.1);
-            text-decoration: none; pointer-events: auto; transition: 0.3s;
-        }
-        .author-badge:active { transform: scale(0.95); background: rgba(0,255,136,0.2); }
-        .author-badge span { color: var(--gold); font-size: 11px; letter-spacing: 2.5px; font-weight: bold; text-transform: uppercase; }
+    #flowerNamePopup {
+      position: fixed; top: 15%; left: 50%; transform: translateX(-50%) translateY(-20px);
+      background: rgba(0, 20, 30, 0.8); backdrop-filter: blur(20px);
+      padding: 18px 35px; border-radius: 40px; border: 1px solid #0ff;
+      z-index: 1100; opacity: 0; pointer-events: none;
+      transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      text-align: center; box-shadow: 0 0 30px #0ff8;
+    }
+    #flowerNamePopup.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        /* UI Elements */
-        #flowerNamePopup {
-            position: fixed; top: 15%; left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(15px);
-            padding: 18px 35px; border-radius: 40px; border: 1px solid var(--gold);
-            z-index: 1100; opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            text-align: center;
-        }
-        #flowerNamePopup.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .bottom-nav {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 20px 20px calc(45px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, #000 60%, transparent);
+      z-index: 1000; pointer-events: auto;
+    }
 
-        .bottom-nav {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            padding: 20px 20px calc(45px + env(safe-area-inset-bottom));
-            background: linear-gradient(to top, rgba(0,0,0,1) 60%, transparent);
-            z-index: 1000; pointer-events: auto;
-        }
+    .flower-scroll {
+      display: flex; gap: 14px; overflow-x: auto; padding: 10px 5px;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .flower-scroll::-webkit-scrollbar { display: none; }
 
-        .flower-scroll {
-            display: flex; gap: 14px; overflow-x: auto; padding: 10px 5px;
-            scrollbar-width: none; -webkit-overflow-scrolling: touch;
-        }
-        .flower-scroll::-webkit-scrollbar { display: none; }
+    .item-card {
+      min-width: 90px; height: 100px;
+      background: rgba(0, 255, 255, 0.05); backdrop-filter: blur(15px);
+      border: 1px solid rgba(0, 255, 200, 0.3);
+      border-radius: 25px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      transition: 0.2s; cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
+    }
+    .item-card:active { transform: scale(0.9); background: #0ff3; border-color: #0ff; }
+    .item-card img { width: 55px; height: 55px; object-fit: contain; margin-bottom: 6px; }
+    .item-card span { font-size: 9px; color: #8ef; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
 
-        .item-card {
-            min-width: 90px; height: 100px; background: rgba(255,255,255,0.08);
-            backdrop-filter: var(--blur); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 25px; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-        }
-        .item-card:active { transform: scale(0.9); background: var(--gold); }
-        .item-card img { width: 55px; height: 55px; object-fit: contain; margin-bottom: 6px; }
-        .item-card span { font-size: 9px; text-align: center; color: var(--gold); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 25px; padding: 0 10px; }
+    .shutter { width: 75px; height: 75px; border-radius: 50%; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+    .shutter:active { transform: scale(0.9); }
+    .shutter-inner { width: 85%; height: 85%; background: #fff; border-radius: 50%; }
+    .btn-utility {
+      width: 55px; height: 55px; border-radius: 20px;
+      background: rgba(0, 255, 255, 0.1); backdrop-filter: blur(10px);
+      border: 1px solid #0ff8; color: #fff; font-size: 1.5rem;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .btn-utility:active { transform: scale(0.9); background: #0ff4; }
 
-        .action-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 25px; padding: 0 10px; }
-        .shutter { width: 75px; height: 75px; border-radius: 50%; border: 4px solid #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .shutter:active { transform: scale(0.9); }
-        .shutter-inner { width: 85%; height: 85%; background: #fff; border-radius: 50%; }
-        .btn-utility { width: 55px; height: 55px; border-radius: 20px; background: var(--glass); border: 1px solid rgba(255,255,255,0.1); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; transition: 0.2s; }
-        .btn-utility:active { transform: scale(0.9); background: rgba(255,255,255,0.1); }
+    /* ===== 2050 HOLO WELCOME ===== */
+    .welcome-screen {
+      position: fixed; inset: 0; z-index: 2000;
+      background: radial-gradient(circle at 30% 40%, #021218, #000);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: 1.2s cubic-bezier(0.7,0,0.3,1);
+      backdrop-filter: blur(8px);
+    }
+    .welcome-screen.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
 
-        /* Splash Screen: Option 3 "Golden Code" 🪷📜 */
-        .welcome-screen {
-            position: fixed; inset: 0; z-index: 2000;
-            background: radial-gradient(circle at center, var(--deep-green), #000);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; padding: 20px; transition: 1s cubic-bezier(0.7, 0, 0.3, 1);
-        }
-        .welcome-screen.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+    .holo-ring {
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, #0ff, #f0f, #0ff);
+      filter: blur(25px);
+      opacity: 0.3;
+      animation: spinSlow 12s infinite linear;
+      position: absolute;
+    }
+    @keyframes spinSlow { 100% { transform: rotate(360deg); } }
 
-        /* Generative Folk Ornament */
-        .ornament-container {
-            position: relative; width: 250px; height: 250px;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 30px;
-        }
-        .folk-ornament {
-            position: absolute; inset: 0;
-            background-image: url('ornament.png'); /* Замініть на свій PNG */
-            background-size: contain; background-repeat: no-repeat; background-position: center;
-            opacity: 0.15; filter: sepia(1) saturate(2) hue-rotate(50deg);
-            animation: ornament-pulse 4s infinite ease-in-out;
-        }
-        .logo-main {
-            width: 130px; z-index: 10;
-            filter: drop-shadow(0 0 20px var(--gold));
-            animation: logo-float 6s infinite ease-in-out;
-        }
+    .logo-2050 {
+      font-size: 4.8rem; font-weight: 900; letter-spacing: 12px;
+      text-transform: uppercase;
+      background: linear-gradient(45deg, #a0f0ff, #b3ffd9, #b3b3ff);
+      -webkit-background-clip: text; background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 40px cyan;
+      animation: textGlitch 3s infinite;
+      position: relative; z-index: 10;
+    }
+    @keyframes textGlitch {
+      0%,100% { transform: skew(0deg); opacity: 1; }
+      95% { transform: skew(2deg); opacity: 0.9; text-shadow: 4px 0 cyan, -4px 0 magenta; }
+      96% { transform: skew(-2deg); }
+    }
 
-        /* Animations */
-        @keyframes ornament-pulse {
-            0%, 100% { opacity: 0.1; transform: scale(1) rotate(0deg); }
-            50% { opacity: 0.25; transform: scale(1.05) rotate(2deg); }
-        }
-        @keyframes logo-float {
-            0%, 100% { transform: translateY(0); opacity: 0.9; }
-            50= { transform: translateY(-10px); opacity: 1; }
-        }
+    .subtitle-2050 {
+      font-size: 1rem; letter-spacing: 6px; color: #7df; margin-top: 20px;
+      text-transform: uppercase; font-weight: 300;
+      border-top: 1px solid #0ff8; padding-top: 20px;
+      backdrop-filter: blur(5px);
+    }
 
-        .start-btn {
-            background: linear-gradient(45deg, var(--gold), #ffedcc); color: #000;
-            border: none; padding: 20px 60px; border-radius: 50px;
-            font-weight: 800; font-size: 1.2rem; cursor: pointer;
-            margin-top: 30px; box-shadow: 0 15px 40px rgba(243,207,138,0.3);
-            text-transform: uppercase; letter-spacing: 2px;
-            transition: 0.3s;
-        }
-        .start-btn:active { transform: scale(0.95); box-shadow: 0 5px 20px rgba(243,207,138,0.2); }
-    </style>
+    .start-btn {
+      background: transparent; border: 2px solid #0ff;
+      color: #0ff; padding: 18px 50px; border-radius: 60px;
+      font-weight: 800; font-size: 1.3rem; cursor: pointer;
+      margin-top: 60px; text-transform: uppercase; letter-spacing: 6px;
+      box-shadow: 0 0 30px #0ff6; backdrop-filter: blur(10px);
+      transition: 0.3s; z-index: 10;
+    }
+    .start-btn:hover { background: #0ff2; box-shadow: 0 0 50px #0ff; color: #fff; }
+    .start-btn:active { transform: scale(0.95); }
+
+    .ornament-2050 {
+      width: 200px; height: 200px; position: absolute;
+      border: 2px dashed #0ff8; border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+      animation: morph 8s infinite alternate;
+      filter: drop-shadow(0 0 15px cyan);
+      opacity: 0.6;
+    }
+    @keyframes morph {
+      0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+      100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    }
+  </style>
 </head>
 <body>
 
-<a href="https://www.instagram.com/smartlessa?igsh=aHN5dzZudnJneW85" class="author-badge" target="_blank">
-    <span>BY SMARTLESSA</span>
-    <div style="width: 8px; height: 8px; background: var(--neon); border-radius: 50%; box-shadow: 0 0 10px var(--neon);"></div>
+<a href="https://www.instagram.com/smartlessa" class="author-badge" target="_blank">
+  <span>SMARTLESSA 2050</span>
+  <div style="width: 12px; height: 12px; background: #0ff; border-radius: 50%; box-shadow: 0 0 20px #0ff;"></div>
 </a>
 
+<!-- 2050 WELCOME SCREEN -->
 <div class="welcome-screen" id="welcome">
-    <div class="ornament-container">
-        <div class="folk-ornament"></div>
-        <img src="logo.png" class="logo-main" alt="SmartLessa Logo"> </div>
-    <h1 style="letter-spacing: 8px; color: var(--gold); font-size: 2.8rem; text-transform: uppercase; font-weight: 900;">VINOK AR</h1>
-    <p style="opacity: 0.6; margin-top: 15px; letter-spacing: 2px; font-size: 12px; font-weight: bold; text-transform: uppercase;">МІСІЯ: ХРАНИТЕЛІ ФЛОРИ 🇺🇦</p>
-    <button class="start-btn" id="startBtn">УВІЙТИ В ПОРТАЛ ✨</button>
+  <div class="holo-ring"></div>
+  <div class="ornament-2050"></div>
+  <div class="logo-2050">VINOK</div>
+  <div class="subtitle-2050">╳ FLORA GUARDIAN ╳</div>
+  <button class="start-btn" id="startBtn">⟁ ACCESS ⟁</button>
+  <p style="margin-top: 30px; color: #6cf; font-size: 12px; letter-spacing: 3px;">NEURAL LINK · 2050</p>
 </div>
 
+<!-- AR VIEW -->
 <div class="ar-viewport">
-    <video id="videoElement" autoplay playsinline muted></video>
-    <canvas id="outputCanvas"></canvas>
-    <div id="flowerNamePopup"><span id="popupText">Назва квітки</span></div>
-    
-    <div class="bottom-nav">
-        <div class="flower-scroll" id="flowerScroll"></div>
-        <div class="action-bar">
-            <button class="btn-utility" onclick="resetWreath()">✕</button>
-            <div class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></div>
-            <button class="btn-utility" id="shareBtn">↗</button>
-        </div>
+  <video id="videoElement" autoplay playsinline muted></video>
+  <canvas id="outputCanvas"></canvas>
+  <div id="flowerNamePopup"><span id="popupText">КІБЕР-КВІТКА</span></div>
+  
+  <div class="bottom-nav">
+    <div class="flower-scroll" id="flowerScroll"></div>
+    <div class="action-bar">
+      <button class="btn-utility" onclick="resetWreath()">✕</button>
+      <div class="shutter" onclick="capturePhoto()"><div class="shutter-inner"></div></div>
+      <button class="btn-utility" id="shareBtn">↗</button>
     </div>
+  </div>
 </div>
 
-<audio id="fonMusic" src="fon.mp3" loop></audio>
+<!-- 🎵 ФОНОВА МЕЛОДІЯ -->
+<audio id="fonMusic" src="fon.mp3" loop preload="auto"></audio>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
 <script>
+  (function(){
+    "use strict";
+
+    // ---------- ТВОЇ ОРИГІНАЛЬНІ 15 КВІТІВ (PNG з репо) ----------
     const redBookFlowers = [
-        { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
-        { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
-        { id: 3, src: 'flower_3.png', name: 'Тюльпан дібровний' },
-        { id: 4, src: 'flower_4.png', name: 'Горицвіт весняний' },
-        { id: 5, src: 'flower_5.png', name: 'Півники борові' },
-        { id: 6, src: 'flower_6.png', name: 'Сон-трава велика' },
-        { id: 7, src: 'flower_7.png', name: 'Дзвоники карпатські' },
-        { id: 8, src: 'flower_8.png', name: 'Тирлич безстебловий' },
-        { id: 9, src: 'flower_9.png', name: 'Айстра альпійська' },
-        { id: 10, src: 'flower_10.png', name: 'Фіалка кримська' },
-        { id: 11, src: 'flower_11.png', name: 'Підсніжник білосніжний' },
-        { id: 12, src: 'flower_12.png', name: 'Зозулині черевички' },
-        { id: 13, src: 'flower_13.png', name: 'Лілія лісова' },
-        { id: 14, src: 'flower_14.png', name: 'Едельвейс альпійський' },
-        { id: 15, src: 'flower_15.png', name: 'Червона рута' }
+      { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' },
+      { id: 2, src: 'flower_2.png', name: 'Нарцис вузьколистий' },
+      { id: 3, src: 'flower_3.png', name: 'Тюльпан дібровний' },
+      { id: 4, src: 'flower_4.png', name: 'Горицвіт весняний' },
+      { id: 5, src: 'flower_5.png', name: 'Півники борові' },
+      { id: 6, src: 'flower_6.png', name: 'Сон-трава велика' },
+      { id: 7, src: 'flower_7.png', name: 'Дзвоники карпатські' },
+      { id: 8, src: 'flower_8.png', name: 'Тирлич безстебловий' },
+      { id: 9, src: 'flower_9.png', name: 'Айстра альпійська' },
+      { id: 10, src: 'flower_10.png', name: 'Фіалка кримська' },
+      { id: 11, src: 'flower_11.png', name: 'Підсніжник білосніжний' },
+      { id: 12, src: 'flower_12.png', name: 'Зозулині черевички' },
+      { id: 13, src: 'flower_13.png', name: 'Лілія лісова' },
+      { id: 14, src: 'flower_14.png', name: 'Едельвейс альпійський' },
+      { id: 15, src: 'flower_15.png', name: 'Червона рута' }
     ];
 
-    const state = { selected: [], smileScore: 0, popupTimer: null };
+    // Завантаження PNG у Image об'єкти
     const loadedImages = {};
+    redBookFlowers.forEach(f => {
+      const img = new Image();
+      img.src = f.src;
+      loadedImages[f.id] = img;
+    });
+
+    // ---------- AR STATE ----------
+    const state = { selected: [], smileScore: 0, popupTimer: null };
     const canvas = document.getElementById('outputCanvas');
     const ctx = canvas.getContext('2d');
     const video = document.getElementById('videoElement');
     const music = document.getElementById('fonMusic');
 
-    // Preload
-    redBookFlowers.forEach(f => {
-        const img = new Image(); img.src = f.src; loadedImages[f.id] = img;
-    });
-
+    // ---------- UI СКРОЛ (використовує PNG) ----------
     function initUI() {
-        const scroll = document.getElementById('flowerScroll');
-        redBookFlowers.forEach(f => {
-            const card = document.createElement('div');
-            card.className = 'item-card';
-            card.innerHTML = `<img src="${f.src}"><span>${f.name.split(' ')[0]}</span>`;
-            card.onclick = () => {
-                showName(f.name);
-                if(state.selected.length < 12) {
-                    state.selected.push({ id: f.id, scale: 0, rotation: (Math.random()-0.5)*0.4 });
-                    if(navigator.vibrate) navigator.vibrate(40);
-                }
-            };
-            scroll.appendChild(card);
-        });
+      const scroll = document.getElementById('flowerScroll');
+      redBookFlowers.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `<img src="${f.src}"><span>${f.name.split(' ')[0]}</span>`;
+        card.onclick = () => {
+          showName(f.name);
+          if(state.selected.length < 12) {
+            state.selected.push({ id: f.id, scale: 0, rotation: (Math.random()-0.5)*0.4 });
+            if(navigator.vibrate) navigator.vibrate(40);
+          }
+        };
+        scroll.appendChild(card);
+      });
     }
 
     function showName(name) {
-        const p = document.getElementById('flowerNamePopup');
-        document.getElementById('popupText').textContent = name;
-        p.classList.add('show');
-        clearTimeout(state.popupTimer);
-        state.popupTimer = setTimeout(() => p.classList.remove('show'), 2500);
+      const p = document.getElementById('flowerNamePopup');
+      document.getElementById('popupText').textContent = name;
+      p.classList.add('show');
+      clearTimeout(state.popupTimer);
+      state.popupTimer = setTimeout(() => p.classList.remove('show'), 2500);
     }
 
+    // ---------- FACEMESH ----------
     async function startAR() {
-        const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-        faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
-        faceMesh.onResults(onResults);
+      const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
+      faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
+      faceMesh.onResults(onResults);
 
-        new Camera(video, {
-            onFrame: async () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                await faceMesh.send({image: video});
-            },
-            width: 1280, height: 720
-        }).start();
+      new Camera(video, {
+        onFrame: async () => {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          await faceMesh.send({image: video});
+        },
+        width: 1280, height: 720
+      }).start();
     }
 
     function onResults(results) {
-        ctx.save();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-        if (results.multiFaceLandmarks?.[0]) {
-            const landmarks = results.multiFaceLandmarks[0];
-            
-            // Smile Detection for ribbons
-            const upperLip = landmarks[13], lowerLip = landmarks[14];
-            const dist = Math.hypot(upperLip.x - lowerLip.x, upperLip.y - lowerLip.y);
-            state.smileScore = Math.max(0, (dist - 0.015) * 20);
-
-            // DRAW ORDER: Ribbons first, then Wreath
-            if(state.smileScore > 0.5) drawDoubleRibbons(landmarks);
-            drawWreath(landmarks);
-        }
-        ctx.restore();
+      if (results.multiFaceLandmarks?.[0]) {
+        const landmarks = results.multiFaceLandmarks[0];
+        
+        // Посмішка (ширина рота)
+        const mouthLeft = landmarks[61], mouthRight = landmarks[291];
+        const mouthWidth = Math.hypot(mouthRight.x - mouthLeft.x, mouthRight.y - mouthLeft.y);
+        state.smileScore = Math.max(0, (mouthWidth - 0.13) * 25);
+        
+        if(state.smileScore > 0.5) drawDoubleRibbons(landmarks);
+        drawWreath(landmarks);
+      }
+      ctx.restore();
     }
 
     function drawDoubleRibbons(landmarks) {
-        // Точки скронь (234 та 454) - початок конструкції
-        const left = landmarks[234], right = landmarks[454];
-        const time = Date.now() / 250;
-        const wave = Math.sin(time) * 30;
+      const left = landmarks[234], right = landmarks[454];
+      const headW = Math.abs(right.x * canvas.width - left.x * canvas.width);
+      const time = Date.now() / 250;
+      const wave = Math.sin(time) * 30;
 
-        ctx.save();
-        ctx.lineWidth = canvas.width * 0.04;
-        ctx.lineCap = 'round';
-        ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.save();
+      ctx.lineWidth = canvas.width * 0.035;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 15; ctx.shadowColor = '#0ff';
 
-        const drawSide = (point, side) => {
-            const sx = point.x * canvas.width;
-            // 1. ПІДНІМАЄМО ВГОРУ ВІД ВУХА (-40 пікселів)
-            const sy = point.y * canvas.height - 40; 
+      const drawSide = (point, side) => {
+        const sx = point.x * canvas.width;
+        const sy = point.y * canvas.height - (headW * 0.48);
+        const ex = side === 'left' ? canvas.width * 0.15 : canvas.width * 0.85;
+        const ey = canvas.height * 0.85;
 
-            // 2. ПІДНІМАЄМО КІНЦЕВІ ТОЧКИ стрічок (Зменшуємо ey)
-            const ex = side === 'left' ? canvas.width * 0.15 : canvas.width * 0.85;
-            const ey = canvas.height * 0.85; // Раніше було просто canvas.height
+        ctx.strokeStyle = '#0af';
+        ctx.beginPath(); ctx.moveTo(sx - 12, sy);
+        ctx.bezierCurveTo(sx + (side==='left'?-100:100) + wave, sy + 180, ex + (side==='left'?80:-80), ey - 150, ex - 12, ey);
+        ctx.stroke();
 
-            // Синя
-            ctx.strokeStyle = 'rgba(0, 87, 183, 0.85)';
-            ctx.beginPath(); ctx.moveTo(sx - 12, sy);
-            ctx.bezierCurveTo(sx + (side==='left'?-100:100) + wave, sy + 180, ex + (side==='left'?80:-80), ey - 150, ex - 12, ey);
-            ctx.stroke();
+        ctx.strokeStyle = '#8f8';
+        ctx.beginPath(); ctx.moveTo(sx + 12, sy);
+        ctx.bezierCurveTo(sx + (side==='left'?-70:70) + wave, sy + 180, ex + (side==='left'?110:-110), ey - 150, ex + 12, ey);
+        ctx.stroke();
+      };
 
-            // Жовта
-            ctx.strokeStyle = 'rgba(255, 215, 0, 0.85)';
-            ctx.beginPath(); ctx.moveTo(sx + 12, sy);
-            ctx.bezierCurveTo(sx + (side==='left'?-70:70) + wave, sy + 180, ex + (side==='left'?110:-110), ey - 150, ex + 12, ey);
-            ctx.stroke();
-        };
-
-        drawSide(left, 'left');
-        drawSide(right, 'right');
-        ctx.restore();
+      drawSide(left, 'left');
+      drawSide(right, 'right');
+      ctx.restore();
     }
 
     function drawWreath(landmarks) {
-        // Точки кріплення повністю синхронізовані зі стрічками
-        // 1. ПІДНІМАЄМО ВГОРУ ВІД ВУХА (-40 пікселів)
-        const p0 = { x: landmarks[234].x * canvas.width, y: landmarks[234].y * canvas.height - 40 };
-        const p2 = { x: landmarks[454].x * canvas.width, y: landmarks[454].y * canvas.height - 40 };
-        
-        const headW = Math.abs(p2.x - p0.x);
-        
-        // 3. ОПУСКАЄМО ЦЕНТРАЛЬНУ ТОЧКУ НА ЛОБІ (Зменшуємо коефіцієнт з 0.6 до 0.4)
-        // p1 - найвища точка вінка над чолом
-        const p1 = { 
-            x: (p0.x + p2.x)/2, 
-            y: (landmarks[10].y * canvas.height) - (headW * 0.4) 
-        };
+      const headW = Math.abs(landmarks[454].x * canvas.width - landmarks[234].x * canvas.width);
+      const raiseSide = headW * 0.48;
+      const raiseTop  = headW * 0.68;
 
-        state.selected.forEach((f, i) => {
-            const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
-            const mt = 1 - t;
-            const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
-            const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
+      const p0 = { 
+        x: landmarks[234].x * canvas.width, 
+        y: landmarks[234].y * canvas.height - raiseSide 
+      };
+      const p2 = { 
+        x: landmarks[454].x * canvas.width, 
+        y: landmarks[454].y * canvas.height - raiseSide 
+      };
+      const p1 = { 
+        x: (p0.x + p2.x) / 2, 
+        y: (landmarks[10].y * canvas.height) - raiseTop 
+      };
 
-            if(f.scale < 1) f.scale += 0.08;
-            const size = (headW * 0.3) * f.scale * (1 + state.smileScore * 0.3);
-            const img = loadedImages[f.id];
+      state.selected.forEach((f, i) => {
+        const t = state.selected.length === 1 ? 0.5 : i / (state.selected.length - 1);
+        const mt = 1 - t;
+        const x = mt * mt * p0.x + 2 * mt * t * p1.x + t * t * p2.x;
+        const y = mt * mt * p0.y + 2 * mt * t * p1.y + t * t * p2.y;
 
-            if(img?.complete) {
-                ctx.save(); ctx.translate(x, y); ctx.rotate(f.rotation);
-                ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(0,0,0,0.5)';
-                ctx.drawImage(img, -size/2, -size/2, size, size); ctx.restore();
-            }
-        });
+        if(f.scale < 1) f.scale += 0.08;
+        const size = (headW * 0.3) * f.scale * (1 + state.smileScore * 0.2);
+        const img = loadedImages[f.id];
+
+        if(img && img.complete) {
+          ctx.save(); 
+          ctx.translate(x, y); 
+          ctx.rotate(f.rotation);
+          ctx.shadowBlur = 20; ctx.shadowColor = '#0ff';
+          ctx.drawImage(img, -size/2, -size/2, size, size); 
+          ctx.restore();
+        }
+      });
     }
 
+    // ---------- CONTROLS ----------
     window.resetWreath = () => {
-        state.selected = [];
-        if(navigator.vibrate) navigator.vibrate(20);
+      state.selected = [];
+      if(navigator.vibrate) navigator.vibrate(20);
     };
 
     window.capturePhoto = () => {
-        const link = document.createElement('a');
-        link.download = 'vinok-keeper-2026.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
+      const link = document.createElement('a');
+      link.download = `vinok2050-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      if(navigator.vibrate) navigator.vibrate([30,30,30]);
     };
 
     document.getElementById('shareBtn').onclick = async () => {
-        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-        const file = new File([blob], 'vinok-ar.png', { type: 'image/png' });
-        const shareData = { files: [file], title: 'Vinok AR 🇺🇦', text: 'Я Хранитель Флори!' };
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share(shareData);
-        } else { capturePhoto(); }
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+      const file = new File([blob], 'vinok-ar.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Vinok 2050', text: '🌿 Neural Wreath' });
+      } else { capturePhoto(); }
     };
 
+    // ---------- START ----------
     document.getElementById('startBtn').onclick = () => {
-        document.getElementById('welcome').classList.add('hidden');
-        music.play().catch(() => {});
-        startAR();
+      document.getElementById('welcome').classList.add('hidden');
+      music.play().catch(e => console.log('🎵 Автовідтворення мелодії очікує взаємодії'));
+      startAR();
     };
 
     initUI();
+  })();
 </script>
 </body>
 </html>
