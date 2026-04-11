@@ -3,101 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0f0a" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#f0f0f0" media="(prefers-color-scheme: light)">
-  <title>SmartLessa · Портал Хранителів (2026)</title>
-  
-  <!-- Сучасний manifest для PWA -->
-  <link rel="manifest" href="data:application/manifest+json,{
-    \"name\":\"SmartLessa\",
-    \"short_name\":\"Lessa\",
-    \"description\":\"AR-колекціонування квітів через QR-коди\",
-    \"start_url\":\".\",
-    \"display\":\"standalone\",
-    \"orientation\":\"portrait\",
-    \"theme_color\":\"#c9a23d\",
-    \"background_color\":\"#0a0f0a\",
-    \"icons\":[{\"src\":\"icon-192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\",\"purpose\":\"any maskable\"}],
-    \"categories\":[\"education\",\"ar\",\"game\"]
-  }">
-  
-  <!-- Суворий CSP з nonce (для inline-стилів дозволено, для скриптів – зовнішні) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://*.supabase.co https://*.googleapis.com; worker-src 'self' blob:; font-src 'self';">
-  
-  <!-- Preconnect до CDN для швидшого завантаження -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  
+  <meta name="theme-color" content="#0a0f0a">
+  <title>SmartLessa · Квест-гра (фінал)</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+        "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm"
+      }
+    }
+  </script>
   <style>
-    /* Сучасний CSS – Container Queries, нові кольори, адаптивність */
+    /* (вставте повністю стилі з попередньої версії – вони не змінилися) */
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    :root {
-      --gold: #c9a23d;
-      --gold-light: #e2c47c;
-      --dark-bg: #0a0f0a;
-      --light-bg: #f5f2e8;
-      --glass: rgba(20, 30, 20, 0.65);
-      --glass-light: rgba(245, 242, 232, 0.6);
-      --blur: blur(20px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
-    @media (prefers-color-scheme: light) {
-      :root { --glass: rgba(245, 242, 232, 0.6); --dark-bg: #f5f2e8; }
-      body { background: #e8e4d8; color: #1a1a1a; }
-      .welcome-screen { background: #f0ede4; }
-      .welcome-logo, .start-btn { color: #b8860b; border-color: #b8860b; text-shadow: none; }
-      .herbarium-panel, .hologram-panel { background: rgba(245,242,232,0.85); border-color: #c9a23d; }
-      .herb-item, .item-card { background: rgba(0,0,0,0.05); }
-      .flower-counter { background: rgba(201,162,61,0.2); color: #8b5a2b; }
-    }
-    body { background: var(--dark-bg); font-family: system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto; color: #fff; height: 100dvh; overflow: hidden; position: fixed; width: 100%; transition: background 0.2s; }
+    :root { --gold: #c9a23d; --gold-light: #e2c47c; --dark-bg: #0a0f0a; --glass: rgba(20,30,20,0.65); --blur: blur(20px); --safe-bottom: env(safe-area-inset-bottom,0px); }
+    body { background: #0a0f0a; font-family: system-ui; color: #fff; height: 100dvh; overflow: hidden; position: fixed; width: 100%; }
     #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); z-index: 10; }
-    .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: #0a0f0a; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; opacity: 1; visibility: visible; transition: opacity 0.5s ease, visibility 0.5s; backdrop-filter: blur(0px); }
+    .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: #050805; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; opacity: 1; visibility: visible; transition: opacity 0.5s; }
     .welcome-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .welcome-logo { font-size: clamp(2rem, 10vw, 4.5rem); font-weight: 700; letter-spacing: 6px; color: var(--gold); text-shadow: 0 0 15px rgba(201,162,61,0.4); margin-bottom: 20px; animation: pulseGlow 2s infinite; }
-    @keyframes pulseGlow { 0% { text-shadow: 0 0 5px rgba(201,162,61,0.3); transform: scale(1); } 50% { text-shadow: 0 0 25px rgba(201,162,61,0.7); transform: scale(1.02); } 100% { text-shadow: 0 0 5px rgba(201,162,61,0.3); transform: scale(1); } }
-    .welcome-desc { color: #ccc; max-width: 320px; margin-bottom: 20px; font-size: 1rem; }
-    .start-btn { background: transparent; border: 2px solid var(--gold); color: var(--gold); padding: 14px 40px; border-radius: 60px; font-weight: 600; font-size: 1.2rem; letter-spacing: 2px; cursor: pointer; transition: 0.2s; margin-top: 20px; backdrop-filter: blur(10px); }
-    .start-btn:active { transform: scale(0.96); background: var(--gold); color: #000; }
-    /* Гербарій та інші компоненти – адаптивні */
+    .welcome-logo { font-size: clamp(2rem,10vw,4.5rem); font-weight: 700; letter-spacing: 6px; color: var(--gold); text-shadow: 0 0 15px rgba(201,162,61,0.4); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { text-shadow: 0 0 5px rgba(201,162,61,0.3); } 50% { text-shadow: 0 0 25px rgba(201,162,61,0.7); } }
+    .start-btn { background: transparent; border: 2px solid var(--gold); color: var(--gold); padding: 14px 40px; border-radius: 60px; font-weight: 600; font-size: 1.2rem; cursor: pointer; margin-top: 20px; }
     .herbarium-panel { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 20px; right: 20px; z-index: 1200; padding: 24px 20px; max-height: calc(100dvh - 100px); overflow-y: auto; display: none; backdrop-filter: blur(30px); background: rgba(10,20,10,0.85); border: 1px solid rgba(201,162,61,0.4); border-radius: 36px; }
     .herbarium-panel.show { display: block; }
     .herbarium-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); gap: 16px; margin-top: 20px; }
-    .herb-item { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 12px 8px; text-align: center; border: 1px solid rgba(201,162,61,0.2); transition: all 0.2s; cursor: pointer; }
-    .herb-item.found { border-color: var(--gold); background: rgba(201,162,61,0.15); box-shadow: 0 0 12px rgba(201,162,61,0.3); animation: pop 0.2s ease; }
-    @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-    .herb-item img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(0.7); transition: filter 0.2s; }
+    .herb-item { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 12px 8px; text-align: center; border: 1px solid rgba(201,162,61,0.2); cursor: pointer; }
+    .herb-item.found { border-color: var(--gold); background: rgba(201,162,61,0.15); }
+    .herb-item img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(0.7); }
     .herb-item.found img { filter: none; }
-    .herb-item span { display: block; font-size: 12px; margin-top: 8px; color: var(--gold-light); }
-    .close-btn { position: absolute; top: 16px; right: 20px; background: none; border: none; color: var(--gold); font-size: 32px; cursor: pointer; width: 48px; height: 48px; border-radius: 30px; transition: background 0.2s; }
-    .close-btn:hover { background: rgba(255,255,255,0.1); }
+    .close-btn { position: absolute; top: 16px; right: 20px; background: none; border: none; color: var(--gold); font-size: 32px; cursor: pointer; }
     .hologram-panel { position: absolute; bottom: 16px; left: 16px; right: 16px; padding: 20px 16px calc(20px + var(--safe-bottom)); background: rgba(10,18,10,0.55); backdrop-filter: blur(30px); border: 1px solid rgba(201,162,61,0.4); border-radius: 48px 48px 32px 32px; z-index: 1000; }
-    .mission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 8px; }
-    .mission-title { color: var(--gold-light); font-weight: 500; letter-spacing: 1.5px; font-size: 14px; text-transform: uppercase; }
-    .flower-counter { background: rgba(201,162,61,0.2); padding: 6px 16px; border-radius: 40px; border: 1px solid var(--gold); color: var(--gold); font-weight: 600; font-size: 16px; backdrop-filter: blur(4px); }
-    .flower-scroll { display: flex; gap: 14px; overflow-x: auto; padding: 8px 4px 16px; margin-bottom: 8px; scrollbar-width: thin; }
-    .item-card { min-width: 80px; height: 80px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(201,162,61,0.3); border-radius: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
-    .item-card:active { transform: scale(0.94); background: rgba(201,162,61,0.25); }
-    .item-card img { width: 55px; height: 55px; object-fit: contain; }
-    .action-bar { display: flex; justify-content: space-around; align-items: center; padding: 8px 0 4px; }
-    .gold-btn { background: none; border: 1.5px solid var(--gold); color: var(--gold); width: 64px; height: 64px; border-radius: 40px; font-size: 30px; backdrop-filter: blur(10px); cursor: pointer; transition: 0.15s; }
+    .mission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .flower-counter { background: rgba(201,162,61,0.2); padding: 6px 16px; border-radius: 40px; border: 1px solid var(--gold); }
+    .flower-scroll { display: flex; gap: 14px; overflow-x: auto; padding: 8px 4px 16px; }
+    .item-card { min-width: 80px; height: 80px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(201,162,61,0.3); border-radius: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .item-card:active { transform: scale(0.94); }
+    .item-card img { width: 55px; height: 55px; }
+    .action-bar { display: flex; justify-content: space-around; align-items: center; padding: 8px 0; }
+    .gold-btn { background: none; border: 1.5px solid var(--gold); color: var(--gold); width: 64px; height: 64px; border-radius: 40px; font-size: 30px; cursor: pointer; }
     .gold-btn:active { transform: scale(0.92); background: var(--gold); color: #000; }
-    .shutter { width: 80px; height: 80px; border-radius: 60px; border: 3px solid var(--gold); display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); transition: 0.1s; }
-    .shutter:active { transform: scale(0.94); }
-    .shutter-inner { width: 70%; height: 70%; background: var(--gold); border-radius: 50%; box-shadow: 0 0 20px var(--gold); }
-    #flowerNamePopup { position: fixed; top: 18%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); backdrop-filter: blur(30px); padding: 12px 24px; border-radius: 60px; border: 1px solid var(--gold); z-index: 1100; opacity: 0; transition: opacity 0.3s; pointer-events: none; color: var(--gold-light); font-weight: 500; white-space: nowrap; }
+    .shutter { width: 80px; height: 80px; border-radius: 60px; border: 3px solid var(--gold); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .shutter-inner { width: 70%; height: 70%; background: var(--gold); border-radius: 50%; }
+    #flowerNamePopup { position: fixed; top: 18%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 12px 24px; border-radius: 60px; border: 1px solid var(--gold); opacity: 0; transition: 0.3s; pointer-events: none; white-space: nowrap; }
     #flowerNamePopup.show { opacity: 1; }
-    .herbarium-toggle { position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 20px; z-index: 1050; width: 56px; height: 56px; border-radius: 30px; background: rgba(20,30,20,0.6); backdrop-filter: blur(15px); border: 1px solid var(--gold); color: var(--gold); font-size: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-    .error-toast, .info-toast { position: fixed; bottom: 120px; left: 20px; right: 20px; background: rgba(180,40,40,0.95); color: white; padding: 14px; border-radius: 40px; text-align: center; z-index: 1300; backdrop-filter: blur(20px); display: none; font-size: 14px; }
+    .herbarium-toggle { position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 20px; z-index: 1050; width: 56px; height: 56px; border-radius: 30px; background: rgba(20,30,20,0.6); backdrop-filter: blur(15px); border: 1px solid var(--gold); color: var(--gold); font-size: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .error-toast, .info-toast { position: fixed; bottom: 120px; left: 20px; right: 20px; background: rgba(180,40,40,0.95); color: white; padding: 14px; border-radius: 40px; text-align: center; display: none; z-index: 1300; }
     .info-toast { background: rgba(0,100,0,0.9); }
     #leaderboard { background: rgba(0,0,0,0.4); border-radius: 20px; padding: 12px; margin-top: 20px; font-size: 13px; }
-    #leaderboard span { color: var(--gold); font-weight: bold; }
-    button { cursor: pointer; user-select: none; }
-    @media (max-width: 480px) { .item-card { min-width: 70px; height: 70px; } .item-card img { width: 45px; height: 45px; } .gold-btn { width: 56px; height: 56px; font-size: 26px; } .shutter { width: 70px; height: 70px; } }
   </style>
 </head>
 <body>
-
 <div class="welcome-screen" id="welcome">
   <div class="welcome-logo">SMARTLESSA</div>
   <div class="welcome-desc">Таємна локація · Шкільний портал</div>
@@ -111,11 +66,11 @@
   <button class="close-btn" id="closeHerbarium">✕</button>
   <h2 style="color:var(--gold);">Гербарій</h2>
   <div class="herbarium-grid" id="herbariumGrid"></div>
-  <div style="margin-top: 20px; text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+  <div style="margin-top: 20px; text-align: center; display: flex; gap: 12px; justify-content: center;">
     <button id="useHerbariumBtn" style="background:var(--gold); border:none; color:#000; padding: 12px 20px; border-radius: 40px; font-weight:600;">Сплести вінок</button>
     <button id="resetProgressBtn" style="background:transparent; border:1px solid red; color:red; padding: 12px 20px; border-radius: 40px;">Скинути прогрес</button>
   </div>
-  <div id="leaderboard"><span>🏆 Лідерборд</span><br>Увімкніть Supabase для змагань</div>
+  <div id="leaderboard">🏆 Лідерборд (увімкніть Supabase)</div>
 </div>
 
 <div class="ar-viewport">
@@ -129,7 +84,7 @@
     </div>
     <div class="flower-scroll" id="flowerScroll"></div>
     <div class="action-bar">
-      <button class="gold-btn" id="resetWreathBtn">✕</button>
+      <button class="gold-btn" id="switchCameraBtn">🔄</button>
       <div class="shutter" id="captureBtn"><div class="shutter-inner"></div></div>
       <button class="gold-btn" id="shareBtn">↗</button>
     </div>
@@ -139,15 +94,6 @@
 <div class="error-toast" id="errorToast"></div>
 <div class="info-toast" id="infoToast"></div>
 <audio id="addSound" src="data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f38="></audio>
-
-<script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
-      "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm"
-    }
-  }
-</script>
 
 <script type="module">
   import * as THREE from 'three';
@@ -172,7 +118,13 @@
   };
   let foundFlowers = [];
   let wreathFlowers = [];
-  
+  let currentFacingMode = 'environment'; // 'user' або 'environment'
+  let currentStream = null;
+  let faceLandmarker = null;
+  let video, canvas2d, ctx2d;
+  let renderer, scene, camera3D, wreathGroup;
+  let failedQRattempts = 0;
+
   function loadLocal() {
     const stored = localStorage.getItem('smartlessa_found');
     foundFlowers = stored ? JSON.parse(stored) : [];
@@ -234,22 +186,25 @@
     updateWreath3D();
   }
 
-  // ---------- Three.js з підтримкою WebGPU ----------
-  const renderer = new THREE.WebGLRenderer({ alpha: true, preserveDrawingBuffer: true, powerPreference: "high-performance" });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.domElement.style.position = 'absolute';
-  renderer.domElement.style.top = '0';
-  renderer.domElement.style.left = '0';
-  renderer.domElement.style.zIndex = '15';
-  renderer.domElement.style.pointerEvents = 'none';
-  document.querySelector('.ar-viewport').appendChild(renderer.domElement);
-  const scene = new THREE.Scene();
-  const camera3D = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera3D.position.z = 5;
-  const wreathGroup = new THREE.Group();
-  scene.add(wreathGroup);
-
+  // Three.js
+  function initThree() {
+    renderer = new THREE.WebGLRenderer({ alpha: true, preserveDrawingBuffer: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
+    renderer.domElement.style.zIndex = '15';
+    renderer.domElement.style.pointerEvents = 'none';
+    document.querySelector('.ar-viewport').appendChild(renderer.domElement);
+    scene = new THREE.Scene();
+    camera3D = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera3D.position.z = 5;
+    wreathGroup = new THREE.Group();
+    scene.add(wreathGroup);
+    animate3D();
+  }
   function updateWreath3D() {
+    if (!wreathGroup) return;
     while(wreathGroup.children.length) wreathGroup.remove(wreathGroup.children[0]);
     const count = wreathFlowers.length;
     if (count === 0) return;
@@ -269,22 +224,27 @@
       const sprite = new THREE.Sprite(material);
       const angle = (i / count) * Math.PI * 2;
       const radius = 0.85;
-      sprite.position.set(Math.cos(angle) * radius, Math.sin(angle) * 0.35, 0);
+      sprite.position.set(Math.cos(angle) * radius, Math.sin(angle) * 0.35 + 0.15, 0); // зсув вгору
       sprite.scale.set(0.55, 0.55, 1);
       wreathGroup.add(sprite);
     });
   }
-  function animate3D() { requestAnimationFrame(animate3D); renderer.render(scene, camera3D); }
-  animate3D();
+  function animate3D() { requestAnimationFrame(animate3D); if(renderer && scene && camera3D) renderer.render(scene, camera3D); }
 
-  // ---------- Сучасний MediaPipe Face Landmarker ----------
-  const video = document.getElementById('videoElement');
-  const canvas2d = document.getElementById('outputCanvas');
-  const ctx2d = canvas2d.getContext('2d');
-  let faceLandmarker = null;
-  let lastTimestamp = 0;
-  let frameCount = 0;
-  
+  // Камера та AR
+  async function switchCamera() {
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    if (currentStream) {
+      currentStream.getTracks().forEach(track => track.stop());
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: currentFacingMode }, width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    currentStream = stream;
+    video.srcObject = stream;
+    await video.play();
+  }
+
   async function initFaceLandmarker() {
     const vision = await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
@@ -298,14 +258,8 @@
       runningMode: "VIDEO",
       numFaces: 1
     });
-    console.log("FaceLandmarker готовий");
   }
-  
-  async function startAR() {
-    await initFaceLandmarker();
-    processVideo();
-  }
-  
+
   function processVideo() {
     if (!faceLandmarker || video.readyState < 2) {
       requestAnimationFrame(processVideo);
@@ -317,98 +271,122 @@
     ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height);
     ctx2d.drawImage(video, 0, 0, canvas2d.width, canvas2d.height);
     
-    // QR сканування через requestIdleCallback для продуктивності
-    frameCount++;
-    if (frameCount % 8 === 0) {
-      const imageData = ctx2d.getImageData(0, 0, canvas2d.width, canvas2d.height);
-      const code = jsQR(imageData.data, canvas2d.width, canvas2d.height);
-      if (code && QR_MAP[code.data]) addFlower(QR_MAP[code.data]);
+    // QR сканування
+    const imageData = ctx2d.getImageData(0, 0, canvas2d.width, canvas2d.height);
+    const code = jsQR(imageData.data, canvas2d.width, canvas2d.height);
+    if (code && QR_MAP[code.data]) {
+      addFlower(QR_MAP[code.data]);
+      failedQRattempts = 0;
+    } else {
+      failedQRattempts++;
+      if (failedQRattempts > 30 && currentFacingMode === 'environment') {
+        showInfo('📸 Спробуй піднести телефон ближче до світла');
+        failedQRattempts = 0;
+      }
     }
     
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
       const lm = results.faceLandmarks[0];
-      // Використовуємо ключові точки: 4 (правий око), 2 (лівий), 10 (верх)
-      const leftEye = lm[33]; // орієнтовно
+      const topForehead = lm[10];
+      const nose = lm[1];
+      const yOffset = (topForehead.y - nose.y) * 0.3;
+      wreathGroup.position.set(
+        (topForehead.x - 0.5) * 5,
+        -(topForehead.y - yOffset - 0.45) * 5,
+        -topForehead.z * 4
+      );
+      const leftEye = lm[33];
       const rightEye = lm[263];
-      const noseTip = lm[4];
-      const centerX = (leftEye.x + rightEye.x) / 2;
-      const centerY = (noseTip.y + lm[152].y) / 2 - 0.03;
-      wreathGroup.position.set((centerX - 0.5) * 5, -(centerY - 0.5) * 5, -noseTip.z * 4);
       wreathGroup.rotation.z = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
     }
     ctx2d.restore();
     requestAnimationFrame(processVideo);
   }
-  
-  // Ініціалізація UI елементів
-  const scroll = document.getElementById('flowerScroll');
-  FLOWERS.forEach(f => {
-    const card = document.createElement('div');
-    card.className = 'item-card';
-    card.innerHTML = `<img src="${f.img}" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2240%22%20fill%3D%22%23c9a23d%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2265%22%20text-anchor%3D%22middle%22%20fill%3D%22black%22%20font-size%3D%2240%22%3E${f.name[0]}%3C%2Ftext%3E%3C%2Fsvg%3E'">`;
-    card.onclick = () => {
-      if (!wreathFlowers.includes(f.id)) {
-        wreathFlowers.push(f.id);
-        saveLocal();
-        updateWreath3D();
-        showPopup(`🌺 ${f.name} додано до вінка`, 1500);
-        playSound();
-      } else showPopup(`🌸 ${f.name} вже у вінку`, 1000);
-    };
-    scroll.appendChild(card);
-  });
-  
-  document.getElementById('resetWreathBtn').onclick = () => {
-    wreathFlowers = [];
-    saveLocal();
-    updateWreath3D();
-    showInfo('Вінок очищено');
-  };
-  document.getElementById('captureBtn').onclick = () => {
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = canvas2d.width;
-    finalCanvas.height = canvas2d.height;
-    const fCtx = finalCanvas.getContext('2d');
-    fCtx.drawImage(canvas2d, 0, 0);
-    fCtx.drawImage(renderer.domElement, 0, 0);
-    const link = document.createElement('a');
-    link.download = `lessa-${Date.now()}.png`;
-    link.href = finalCanvas.toDataURL('image/png');
-    link.click();
-  };
-  document.getElementById('shareBtn').onclick = async () => {
-    document.getElementById('captureBtn').click();
-    if (navigator.share) await navigator.share({ title: 'Мій гербарій', text: `Я знайшов ${foundFlowers.length} квітів!` }).catch(()=>{});
-  };
-  document.getElementById('toggleHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.add('show');
-  document.getElementById('closeHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.remove('show');
-  document.getElementById('useHerbariumBtn').onclick = () => {
-    if (foundFlowers.length === 0) { showError('Спочатку знайди квіти через QR!'); return; }
-    wreathFlowers = [...foundFlowers];
-    saveLocal();
-    updateWreath3D();
-    document.getElementById('herbariumPanel').classList.remove('show');
-    showInfo(`Вінок зібрано з ${wreathFlowers.length} квітів!`);
-  };
-  document.getElementById('resetProgressBtn').onclick = () => {
-    if (confirm('Скинути весь прогрес?')) {
-      foundFlowers = [];
+
+  async function startAR() {
+    await initFaceLandmarker();
+    processVideo();
+  }
+
+  // Ініціалізація UI
+  function initUI() {
+    video = document.getElementById('videoElement');
+    canvas2d = document.getElementById('outputCanvas');
+    ctx2d = canvas2d.getContext('2d');
+    initThree();
+    
+    const scroll = document.getElementById('flowerScroll');
+    FLOWERS.forEach(f => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      card.innerHTML = `<img src="${f.img}" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2240%22%20fill%3D%22%23c9a23d%22%2F%3E%3Ctext%20x%3D%2250%22%20y%3D%2265%22%20text-anchor%3D%22middle%22%20fill%3D%22black%22%20font-size%3D%2240%22%3E${f.name[0]}%3C%2Ftext%3E%3C%2Fsvg%3E'">`;
+      card.onclick = () => {
+        if (!wreathFlowers.includes(f.id)) {
+          wreathFlowers.push(f.id);
+          saveLocal();
+          updateWreath3D();
+          showPopup(`🌺 ${f.name} додано до вінка`, 1500);
+          playSound();
+        } else showPopup(`🌸 ${f.name} вже у вінку`, 1000);
+      };
+      scroll.appendChild(card);
+    });
+
+    document.getElementById('resetWreathBtn')?.addEventListener('click', () => {
       wreathFlowers = [];
       saveLocal();
-      updateUI();
       updateWreath3D();
-      showInfo('Прогрес скинуто');
-    }
-  };
-  
-  // Кнопка активації камери
+      showInfo('Вінок очищено');
+    });
+    document.getElementById('captureBtn').onclick = () => {
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = canvas2d.width;
+      finalCanvas.height = canvas2d.height;
+      const fCtx = finalCanvas.getContext('2d');
+      fCtx.drawImage(canvas2d, 0, 0);
+      fCtx.drawImage(renderer.domElement, 0, 0);
+      const link = document.createElement('a');
+      link.download = `lessa-${Date.now()}.png`;
+      link.href = finalCanvas.toDataURL('image/png');
+      link.click();
+    };
+    document.getElementById('shareBtn').onclick = async () => {
+      document.getElementById('captureBtn').click();
+      if (navigator.share) await navigator.share({ title: 'Мій гербарій', text: `Я знайшов ${foundFlowers.length} квітів!` }).catch(()=>{});
+    };
+    document.getElementById('switchCameraBtn').onclick = switchCamera;
+    document.getElementById('toggleHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.add('show');
+    document.getElementById('closeHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.remove('show');
+    document.getElementById('useHerbariumBtn').onclick = async () => {
+      if (foundFlowers.length === 0) { showError('Спочатку знайди квіти через QR!'); return; }
+      if (currentFacingMode !== 'user') await switchCamera();
+      wreathFlowers = [...foundFlowers];
+      saveLocal();
+      updateWreath3D();
+      document.getElementById('herbariumPanel').classList.remove('show');
+      showInfo(`Вінок зібрано з ${wreathFlowers.length} квітів!`);
+    };
+    document.getElementById('resetProgressBtn').onclick = () => {
+      if (confirm('Скинути весь прогрес?')) {
+        foundFlowers = [];
+        wreathFlowers = [];
+        saveLocal();
+        updateUI();
+        updateWreath3D();
+        showInfo('Прогрес скинуто');
+      }
+    };
+  }
+
+  // Старт
   document.getElementById('startBtn').onclick = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { facingMode: { exact: currentFacingMode }, width: { ideal: 640 }, height: { ideal: 480 } }
       });
+      currentStream = stream;
       video.srcObject = stream;
-      await new Promise(r => video.onloadedmetadata = r);
+      await video.play();
       document.getElementById('welcome').classList.add('hidden');
       startAR();
     } catch (err) {
@@ -416,13 +394,14 @@
       console.error(err);
     }
   };
-  
   window.addEventListener('resize', () => {
-    camera3D.aspect = window.innerWidth / window.innerHeight;
-    camera3D.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    if (camera3D) {
+      camera3D.aspect = window.innerWidth / window.innerHeight;
+      camera3D.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
   });
-  
+  initUI();
   updateUI();
 </script>
 </body>
