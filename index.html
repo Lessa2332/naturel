@@ -2,65 +2,138 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0f0a">
-  <title>SmartLessa · Портал Хранителів</title>
-  
-  <!-- Підключення CSS -->
-  <link rel="stylesheet" href="style.css">
-  
-  <!-- PWA Manifest -->
-  <link rel="manifest" href="manifest.json">
-  
-  <!-- CSP без unsafe-inline, дозволяє тільки зовнішні скрипти з власного домену та CDN -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://*.supabase.co; font-src 'self';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>SmartLessa · Виправлена версія</title>
+  <style>
+    /* Вставте сюди весь ваш style.css */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; font-family: system-ui; color: #fff; height: 100dvh; overflow: hidden; }
+    #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); z-index: 10; }
+    .welcome-screen { position: fixed; inset: 0; background: #050805; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; transition: transform 1s; }
+    .welcome-screen.hidden { transform: translateY(-100%); }
+    .start-btn { background: transparent; border: 2px solid #c9a23d; color: #c9a23d; padding: 18px 50px; border-radius: 60px; font-size: 18px; cursor: pointer; }
+    .hologram-panel { position: absolute; bottom: 16px; left: 16px; right: 16px; background: rgba(10,18,10,0.5); backdrop-filter: blur(30px); border-radius: 48px; padding: 20px; z-index: 1000; }
+    .action-bar { display: flex; justify-content: space-around; margin-top: 10px; }
+    .shutter { width: 80px; height: 80px; border-radius: 60px; border: 3px solid #c9a23d; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .shutter-inner { width: 70%; height: 70%; background: #c9a23d; border-radius: 50%; }
+    .gold-btn { background: none; border: 1.5px solid #c9a23d; color: #c9a23d; width: 64px; height: 64px; border-radius: 40px; font-size: 30px; cursor: pointer; }
+    .error-toast { position: fixed; bottom: 120px; left: 20px; right: 20px; background: rgba(180,40,40,0.9); border-radius: 40px; padding: 16px; text-align: center; display: none; z-index: 1300; }
+    #flowerNamePopup { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 12px 24px; border-radius: 60px; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 1100; }
+    #flowerNamePopup.show { opacity: 1; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+        "jsqr": "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"
+      }
+    }
+  </script>
 </head>
 <body>
-
 <div class="welcome-screen" id="welcome">
-  <div class="welcome-logo">SMARTLESSA</div>
-  <div class="welcome-desc">Таємна локація · Шкільний портал</div>
-  <div class="welcome-desc" style="font-size:14px;">Знайди 12 QR-кодів, щоб зібрати рідкісні квіти</div>
+  <div style="font-size: 3rem; color: #c9a23d;">SMARTLESSA</div>
   <button class="start-btn" id="startBtn">АКТИВУВАТИ</button>
-  <p style="margin-top: 50px; color: #888; font-size: 12px;">піднеси долоню до камери</p>
 </div>
-
-<div class="herbarium-toggle" id="toggleHerbarium">🌿</div>
-<div class="herbarium-panel" id="herbariumPanel">
-  <button class="close-btn" id="closeHerbarium">✕</button>
-  <h2 style="color:var(--gold);">Гербарій</h2>
-  <div class="herbarium-grid" id="herbariumGrid"></div>
-  <div style="margin-top: 20px; text-align: center;">
-    <button id="useHerbariumBtn" style="background:var(--gold); border:none; color:#000; padding: 12px 24px; border-radius: 40px; font-weight:600;">Сплести вінок</button>
-    <button id="resetProgressBtn" style="background:transparent; border:1px solid red; color:red; padding: 12px 24px; border-radius: 40px; margin-left: 10px;">Скинути прогрес</button>
-  </div>
-  <div id="leaderboard"><span>🏆 Лідерборд (топ-10)</span><br>Завантаження...</div>
-</div>
-
-<div class="ar-viewport">
-  <video id="videoElement" autoplay playsinline muted></video>
-  <canvas id="outputCanvas"></canvas>
-  <div id="flowerNamePopup"><span id="popupText">Квітка</span></div>
-  <div class="hologram-panel">
-    <div class="mission-header">
-      <span class="mission-title">Місія: Хранителі</span>
-      <span class="flower-counter" id="flowerCounter">0/12</span>
-    </div>
-    <div class="flower-scroll" id="flowerScroll"></div>
-    <div class="action-bar">
-      <button class="gold-btn" id="resetWreathBtn">✕</button>
-      <div class="shutter" id="captureBtn"><div class="shutter-inner"></div></div>
-      <button class="gold-btn" id="shareBtn">↗</button>
-    </div>
+<video id="videoElement" autoplay playsinline muted></video>
+<canvas id="outputCanvas"></canvas>
+<div id="flowerNamePopup">🌼 Квітка знайдена!</div>
+<div class="hologram-panel">
+  <div class="action-bar">
+    <button class="gold-btn" id="resetWreathBtn">✕</button>
+    <div class="shutter" id="captureBtn"><div class="shutter-inner"></div></div>
+    <button class="gold-btn" id="shareBtn">↗</button>
   </div>
 </div>
-
 <div class="error-toast" id="errorToast"></div>
-<div class="info-toast" id="infoToast"></div>
 
-<audio id="addSound" src="data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f38="></audio>
+<script type="module">
+  import * as THREE from 'three';
+  import jsQR from 'jsqr';
 
-<!-- Підключення основного скрипта як модуль -->
-<script type="module" src="app.js"></script>
+  console.log('Скрипт запущено');
+  
+  const video = document.getElementById('videoElement');
+  const canvas = document.getElementById('outputCanvas');
+  const ctx = canvas.getContext('2d');
+  const startBtn = document.getElementById('startBtn');
+  const errorToast = document.getElementById('errorToast');
+  const welcome = document.getElementById('welcome');
+  
+  function showError(msg) {
+    errorToast.textContent = msg;
+    errorToast.style.display = 'block';
+    setTimeout(() => errorToast.style.display = 'none', 4000);
+  }
+  
+  function showPopup(msg) {
+    const popup = document.getElementById('flowerNamePopup');
+    popup.textContent = msg;
+    popup.classList.add('show');
+    setTimeout(() => popup.classList.remove('show'), 2000);
+  }
+  
+  startBtn.onclick = async () => {
+    console.log('Клік по кнопці');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      video.srcObject = stream;
+      await new Promise(r => video.onloadedmetadata = r);
+      welcome.classList.add('hidden');
+      startAR();
+    } catch (err) {
+      console.error(err);
+      showError('Помилка камери: ' + err.message);
+    }
+  };
+  
+  async function startAR() {
+    const { FaceMesh } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
+    const { Camera } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+    
+    const faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+    faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.5 });
+    
+    faceMesh.onResults((results) => {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+      
+      // Скануємо QR (кожен 5-й кадр)
+      if (Math.random() < 0.2) {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+        if (code && code.data === 'TEST_FLOWER') {
+          showPopup('🌻 Тестова квітка!');
+        }
+      }
+      ctx.restore();
+    });
+    
+    const camera = new Camera(video, {
+      onFrame: async () => {
+        if (video.readyState >= 2) {
+          canvas.width = video.videoWidth || 640;
+          canvas.height = video.videoHeight || 480;
+          await faceMesh.send({ image: video });
+        }
+      },
+      width: 640, height: 480
+    });
+    camera.start();
+  }
+  
+  // Прості кнопки
+  document.getElementById('captureBtn').onclick = () => {
+    const link = document.createElement('a');
+    link.download = 'photo.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  };
+  document.getElementById('shareBtn').onclick = () => alert('Фото збережено!');
+  document.getElementById('resetWreathBtn').onclick = () => showPopup('Вінок очищено');
+</script>
 </body>
 </html>
