@@ -1,0 +1,15 @@
+{
+  "name": "SmartLessa",
+  "short_name": "Lessa",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a0f0a",
+  "theme_color": "#c9a23d"
+}
