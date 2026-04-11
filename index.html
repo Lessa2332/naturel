@@ -3,147 +3,437 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0f1a">
-  <title>ШКІЛЬНИЙ ПОРТАЛ · SMARTLESSA</title>
+  <meta name="theme-color" content="#0a0f0a">
+  <title>SmartLessa · Портал Хранителів</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="data:application/manifest+json,{name:'SmartLessa',short_name:'Lessa',icons:[{src:'icon-192.png',sizes:'192x192',type:'image/png'}],start_url:'.',display:'standalone',background_color:'#0a0f0a',theme_color:'#c9a23d'}">
+  
+  <!-- CSP (базовий) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net; font-src 'self';">
+  
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { background: #000; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; height: 100dvh; overflow: hidden; position: fixed; width: 100%; }
+    /* ----- GLOBAL PREMIUM STYLES ----- */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-    #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); z-index: 10; }
+    :root {
+      --gold: #c9a23d;
+      --gold-light: #e2c47c;
+      --dark: #0a0f0a;
+      --glass: rgba(20, 30, 20, 0.65);
+      --blur: blur(20px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
 
-    /* Гербарій (колекція) */
+    body {
+      background: #000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #fff;
+      height: 100dvh;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+    }
+
+    /* AR Viewport */
+    #videoElement, #outputCanvas {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: translate(-50%, -50%) scaleX(-1);
+      z-index: 10;
+    }
+
+    /* ----- GOLD PREMIUM UI COMPONENTS ----- */
+    .glass-panel {
+      background: var(--glass);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid rgba(201, 162, 61, 0.25);
+      border-radius: 32px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(201,162,61,0.2) inset;
+    }
+
+    /* Гербарій (модальне вікно) */
     .herbarium-panel {
-      position: absolute; top: 20px; left: 20px; right: 20px; z-index: 1200;
-      background: rgba(0, 30, 20, 0.8); backdrop-filter: blur(20px);
-      border: 2px solid #0f8; border-radius: 30px; padding: 15px;
-      display: none; /* приховано за замовчуванням */
-      max-height: 70vh; overflow-y: auto;
-      box-shadow: 0 0 40px #0f8;
+      position: absolute;
+      top: max(20px, env(safe-area-inset-top));
+      left: 20px;
+      right: 20px;
+      z-index: 1200;
+      padding: 24px 20px;
+      max-height: calc(100dvh - 100px);
+      overflow-y: auto;
+      display: none;
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      background: rgba(10, 20, 10, 0.8);
+      border: 1px solid rgba(201,162,61,0.4);
+      border-radius: 36px;
+      box-shadow: 0 30px 50px rgba(0,0,0,0.5);
     }
     .herbarium-panel.show { display: block; }
 
     .herbarium-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
     }
     .herb-item {
-      background: rgba(0,40,30,0.6); border-radius: 15px; padding: 8px;
-      text-align: center; border: 1px solid #0f8;
+      background: rgba(255,255,255,0.03);
+      border-radius: 20px;
+      padding: 12px 8px;
+      text-align: center;
+      border: 1px solid rgba(201,162,61,0.2);
+      transition: all 0.2s ease;
     }
-    .herb-item img { width: 50px; height: 50px; object-fit: contain; filter: grayscale(0.8); }
+    .herb-item.found {
+      border-color: var(--gold);
+      background: rgba(201,162,61,0.1);
+      box-shadow: 0 0 20px rgba(201,162,61,0.2);
+    }
+    .herb-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      filter: grayscale(0.7);
+      transition: filter 0.3s;
+    }
     .herb-item.found img { filter: none; }
-    .herb-item.found { border-color: gold; box-shadow: 0 0 15px gold; }
-
-    .close-herbarium {
-      position: absolute; top: 5px; right: 15px; font-size: 30px; color: #0f8; cursor: pointer;
+    .herb-item span {
+      display: block;
+      font-size: 12px;
+      margin-top: 8px;
+      color: var(--gold-light);
+      font-weight: 400;
     }
 
-    /* Голограма на руці */
+    /* Кнопка закриття */
+    .close-btn {
+      position: absolute;
+      top: 16px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: var(--gold);
+      font-size: 32px;
+      cursor: pointer;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 30px;
+      transition: background 0.2s;
+    }
+    .close-btn:hover { background: rgba(255,255,255,0.05); }
+
+    /* Нижня голограма (зона великого пальця) */
     .hologram-panel {
-      position: absolute; bottom: 20px; left: 20px; right: 20px;
-      padding: 15px 15px calc(20px + env(safe-area-inset-bottom));
-      background: rgba(0, 30, 40, 0.4); backdrop-filter: blur(20px);
-      border: 1.5px solid #0ff; border-radius: 40px 40px 20px 20px;
-      box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      padding: 20px 16px calc(20px + var(--safe-bottom));
+      background: rgba(10, 18, 10, 0.5);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border: 1px solid rgba(201,162,61,0.3);
+      border-radius: 48px 48px 32px 32px;
+      box-shadow: 0 -5px 30px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(201,162,61,0.2) inset;
       z-index: 1000;
     }
-    .mission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-    .flower-counter { background: rgba(0,255,255,0.2); padding: 5px 15px; border-radius: 30px; border: 1px solid #0ff; }
 
-    .flower-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 5px; margin-bottom: 10px; scrollbar-width: none; }
+    .mission-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 0 8px;
+    }
+    .mission-title {
+      color: var(--gold-light);
+      font-weight: 500;
+      letter-spacing: 1.5px;
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+    .flower-counter {
+      background: rgba(201,162,61,0.15);
+      padding: 8px 18px;
+      border-radius: 40px;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-weight: 600;
+      font-size: 16px;
+      backdrop-filter: blur(5px);
+    }
+
+    /* Скрол квітів */
+    .flower-scroll {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding: 8px 4px 16px;
+      margin-bottom: 8px;
+      scrollbar-width: none;
+    }
     .flower-scroll::-webkit-scrollbar { display: none; }
 
     .item-card {
-      min-width: 65px; height: 65px; background: rgba(0, 40, 50, 0.6); backdrop-filter: blur(10px);
-      border: 1.5px solid #0ff; border-radius: 20px; display: flex; align-items: center; justify-content: center;
-      transition: 0.2s; flex-shrink: 0; cursor: pointer;
+      min-width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(201,162,61,0.25);
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s cubic-bezier(0.2,0,0,1);
+      flex-shrink: 0;
+      cursor: pointer;
     }
-    .item-card img { width: 45px; height: 45px; object-fit: contain; }
-
-    .action-bar { display: flex; justify-content: space-around; align-items: center; }
-    .hologram-btn {
-      background: none; border: 2px solid #0ff; color: #0ff; font-size: 24px;
-      width: 55px; height: 55px; border-radius: 30px; display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(5px); cursor: pointer;
+    .item-card:active {
+      transform: scale(0.92);
+      background: rgba(201,162,61,0.2);
+      border-color: var(--gold);
     }
-    .shutter { width: 70px; height: 70px; border-radius: 50%; border: 4px solid #0ff; display: flex; align-items: center; justify-content: center; }
-    .shutter-inner { width: 80%; height: 80%; background: #fff; border-radius: 50%; }
+    .item-card img {
+      width: 55px;
+      height: 55px;
+      object-fit: contain;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+    }
 
+    /* Action Bar — великі кнопки для пальця */
+    .action-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 8px 0 4px;
+    }
+    .gold-btn {
+      background: none;
+      border: 1.5px solid var(--gold);
+      color: var(--gold);
+      width: 64px;
+      height: 64px;
+      border-radius: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: 0.2s;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .gold-btn:active {
+      transform: scale(0.9);
+      background: var(--gold);
+      color: #000;
+    }
+
+    .shutter {
+      width: 80px;
+      height: 80px;
+      border-radius: 60px;
+      border: 3px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+      transition: 0.2s;
+    }
+    .shutter:active { transform: scale(0.92); }
+    .shutter-inner {
+      width: 70%;
+      height: 70%;
+      background: var(--gold);
+      border-radius: 50%;
+      box-shadow: 0 0 25px var(--gold);
+    }
+
+    /* Спливаюче повідомлення */
     #flowerNamePopup {
-      position: fixed; top: 15%; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 20, 30, 0.9); backdrop-filter: blur(20px);
-      padding: 12px 25px; border-radius: 30px; border: 1px solid #0ff;
-      z-index: 1100; opacity: 0; transition: 0.3s; pointer-events: none;
+      position: fixed;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10, 20, 10, 0.9);
+      backdrop-filter: blur(30px);
+      padding: 14px 28px;
+      border-radius: 60px;
+      border: 1px solid var(--gold);
+      z-index: 1100;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      color: var(--gold-light);
+      font-weight: 500;
     }
     #flowerNamePopup.show { opacity: 1; }
 
+    /* Стартовий екран (мінімалізм) */
     .welcome-screen {
-      position: fixed; inset: 0; z-index: 2000; background: #000;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: 1s; text-align: center; padding: 20px;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: #050805;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 1s cubic-bezier(0.2,0,0,1);
+      text-align: center;
+      padding: 20px;
     }
     .welcome-screen.hidden { transform: translateY(-100%); pointer-events: none; }
+    .welcome-logo {
+      font-size: clamp(2.8rem, 15vw, 5rem);
+      font-weight: 600;
+      letter-spacing: 8px;
+      color: var(--gold);
+      text-shadow: 0 0 30px rgba(201,162,61,0.4);
+      margin-bottom: 30px;
+    }
+    .welcome-desc {
+      color: #ccc;
+      max-width: 320px;
+      margin-bottom: 40px;
+      font-size: 16px;
+    }
     .start-btn {
-      background: none; border: 3px solid #0ff; color: #0ff; padding: 18px 45px;
-      border-radius: 50px; font-weight: bold; cursor: pointer; letter-spacing: 5px;
+      background: transparent;
+      border: 2px solid var(--gold);
+      color: var(--gold);
+      padding: 18px 50px;
+      border-radius: 60px;
+      font-weight: 600;
+      font-size: 18px;
+      cursor: pointer;
+      letter-spacing: 4px;
+      backdrop-filter: blur(10px);
+      transition: 0.3s;
+    }
+    .start-btn:active { background: var(--gold); color: #000; }
+
+    /* Кнопка гербарію (у верхньому лівому куті) */
+    .herbarium-toggle {
+      position: absolute;
+      top: calc(20px + env(safe-area-inset-top));
+      left: 20px;
+      z-index: 1050;
+      width: 56px;
+      height: 56px;
+      border-radius: 30px;
+      background: rgba(20,30,20,0.6);
+      backdrop-filter: blur(15px);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
     }
 
-    /* Кнопка гербарію */
-    .herbarium-toggle {
-      position: absolute; top: 20px; left: 20px; z-index: 1050;
-      background: rgba(0,40,30,0.6); border: 2px solid #0f8; color: #0f8;
-      width: 50px; height: 50px; border-radius: 25px; display: flex;
-      align-items: center; justify-content: center; font-size: 28px;
-      backdrop-filter: blur(10px); cursor: pointer;
+    /* Статус помилок */
+    .error-toast {
+      position: fixed;
+      bottom: 120px;
+      left: 20px;
+      right: 20px;
+      background: rgba(180, 40, 40, 0.9);
+      color: white;
+      padding: 16px;
+      border-radius: 40px;
+      text-align: center;
+      z-index: 1300;
+      backdrop-filter: blur(20px);
+      display: none;
     }
   </style>
 </head>
 <body>
 
-<!-- ВІТАЛЬНИЙ ЕКРАН -->
+<!-- Стартовий екран -->
 <div class="welcome-screen" id="welcome">
-  <h1 style="color:#0ff;">🌿 SMARTLESSA</h1>
-  <p style="margin:20px;">Знайди 12 QR-кодів у школі, щоб зібрати рідкісні квіти</p>
-  <button class="start-btn" id="startBtn">РОЗПОЧАТИ КВЕСТ</button>
+  <div class="welcome-logo">SMARTLESSA</div>
+  <div class="welcome-desc">Таємна локація · Шкільний портал</div>
+  <div class="welcome-desc" style="font-size:14px; margin-top:-20px;">Знайди 12 QR-кодів, щоб зібрати рідкісні квіти</div>
+  <button class="start-btn" id="startBtn">АКТИВУВАТИ</button>
+  <p style="margin-top: 50px; color: #888; font-size: 12px;">піднеси долоню до камери</p>
 </div>
 
-<!-- Кнопка відкриття гербарію -->
-<div class="herbarium-toggle" id="toggleHerbarium">📖</div>
+<!-- Кнопка гербарію -->
+<div class="herbarium-toggle" id="toggleHerbarium">🌿</div>
 
 <!-- Панель гербарію -->
 <div class="herbarium-panel" id="herbariumPanel">
-  <div class="close-herbarium" id="closeHerbarium">&times;</div>
-  <h3 style="color:#0f8; margin-bottom:15px;">ТВІЙ ГЕРБАРІЙ</h3>
+  <button class="close-btn" id="closeHerbarium">✕</button>
+  <h2 style="color:var(--gold); font-weight:400; letter-spacing:2px;">Гербарій</h2>
   <div class="herbarium-grid" id="herbariumGrid"></div>
-  <p style="margin-top:15px; text-align:center;">
-    <button id="useHerbariumBtn" style="background:#0f8; color:#000; border:none; padding:12px 25px; border-radius:30px; font-weight:bold;">СПЛЕСТИ ВІНОК ІЗ ЗНАЙДЕНОГО</button>
-  </p>
+  <div style="margin-top: 30px; text-align: center;">
+    <button id="useHerbariumBtn" style="background:var(--gold); border:none; color:#000; padding: 16px 30px; border-radius: 50px; font-weight:600; font-size:16px; cursor:pointer;">Сплести вінок із знайденого</button>
+  </div>
 </div>
 
-<!-- AR VIEW -->
+<!-- AR Viewport -->
 <div class="ar-viewport">
   <video id="videoElement" autoplay playsinline muted></video>
   <canvas id="outputCanvas"></canvas>
-  <div id="flowerNamePopup"><span id="popupText">КВІТКА</span></div>
+  <div id="flowerNamePopup"><span id="popupText">Квітка</span></div>
   
+  <!-- Нижня голограма -->
   <div class="hologram-panel">
     <div class="mission-header">
-      <span>🌱 МІСІЯ: ХРАНИТЕЛІ</span>
+      <span class="mission-title">Місія: Хранителі</span>
       <span class="flower-counter" id="flowerCounter">0/12</span>
     </div>
     <div class="flower-scroll" id="flowerScroll"></div>
     <div class="action-bar">
-      <button class="hologram-btn" onclick="window.resetWreath()">✕</button>
+      <button class="gold-btn" onclick="window.resetWreath()">✕</button>
       <div class="shutter" onclick="window.capturePhoto()"><div class="shutter-inner"></div></div>
-      <button class="hologram-btn" id="shareBtn">↗</button>
+      <button class="gold-btn" id="shareBtn">↗</button>
     </div>
   </div>
 </div>
 
+<!-- Повідомлення про помилку -->
+<div class="error-toast" id="errorToast"></div>
+
 <audio id="fonMusic" src="fon.mp3" loop></audio>
 <audio id="addSound" src="data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f38="></audio>
 
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<!-- Service Worker (PWA) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register("data:application/javascript,self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})");
+    });
+  }
+</script>
+
+<!-- Залежності -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script type="importmap">
@@ -159,7 +449,7 @@
   import * as THREE from 'three';
   import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-  // ----- ДАНІ КВІТІВ (15) -----
+  // ----- Конфігурація -----
   const flowers = [
     { id: 1, src: 'flower_1.png', name: 'Шафран Гейфелів' }, { id: 2, src: 'flower_2.png', name: 'Нарцис' },
     { id: 3, src: 'flower_3.png', name: 'Тюльпан' }, { id: 4, src: 'flower_4.png', name: 'Горицвіт' },
@@ -171,39 +461,23 @@
     { id: 15, src: 'flower_15.png', name: 'Червона рута' }
   ];
 
-  // QR-коди: очікувані рядки (згенеруй QR з такими рядками)
   const QR_FLOWER_MAP = {
-    "SMARTLESSA_FLOWER_1": 1,
-    "SMARTLESSA_FLOWER_2": 2,
-    "SMARTLESSA_FLOWER_3": 3,
-    "SMARTLESSA_FLOWER_4": 4,
-    "SMARTLESSA_FLOWER_5": 5,
-    "SMARTLESSA_FLOWER_6": 6,
-    "SMARTLESSA_FLOWER_7": 7,
-    "SMARTLESSA_FLOWER_8": 8,
-    "SMARTLESSA_FLOWER_9": 9,
-    "SMARTLESSA_FLOWER_10": 10,
-    "SMARTLESSA_FLOWER_11": 11,
-    "SMARTLESSA_FLOWER_12": 12
+    "SMARTLESSA_FLOWER_1": 1, "SMARTLESSA_FLOWER_2": 2, "SMARTLESSA_FLOWER_3": 3,
+    "SMARTLESSA_FLOWER_4": 4, "SMARTLESSA_FLOWER_5": 5, "SMARTLESSA_FLOWER_6": 6,
+    "SMARTLESSA_FLOWER_7": 7, "SMARTLESSA_FLOWER_8": 8, "SMARTLESSA_FLOWER_9": 9,
+    "SMARTLESSA_FLOWER_10": 10, "SMARTLESSA_FLOWER_11": 11, "SMARTLESSA_FLOWER_12": 12
   };
 
-  // Стан
-  window.state = { selected: [] };          // поточний вінок
-  let foundFlowers = [];                     // масив id знайдених квітів (з localStorage)
+  // Глобальний стан
+  window.state = { selected: [] };
+  let foundFlowers = [];
   
-  // Завантаження з localStorage
-  function loadFoundFlowers() {
+  function loadFound() {
     const stored = localStorage.getItem('smartlessa_found');
-    if (stored) {
-      foundFlowers = JSON.parse(stored);
-    } else {
-      foundFlowers = [];
-    }
+    foundFlowers = stored ? JSON.parse(stored) : [];
   }
-  function saveFoundFlowers() {
-    localStorage.setItem('smartlessa_found', JSON.stringify(foundFlowers));
-  }
-  loadFoundFlowers();
+  function saveFound() { localStorage.setItem('smartlessa_found', JSON.stringify(foundFlowers)); }
+  loadFound();
 
   const flowerImages = {};
   flowers.forEach(f => { const img = new Image(); img.src = f.src; flowerImages[f.id] = img; });
@@ -213,6 +487,13 @@
   const ctx = canvas.getContext('2d');
   const addSound = document.getElementById('addSound');
   const counterSpan = document.getElementById('flowerCounter');
+  const errorToast = document.getElementById('errorToast');
+
+  function showError(msg) {
+    errorToast.style.display = 'block';
+    errorToast.textContent = msg;
+    setTimeout(() => errorToast.style.display = 'none', 4000);
+  }
 
   // Three.js ініціалізація
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
@@ -226,7 +507,6 @@
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera.position.z = 5;
-
   const labelRenderer = new CSS2DRenderer();
   labelRenderer.setSize(window.innerWidth, window.innerHeight);
   labelRenderer.domElement.style.position = 'absolute';
@@ -238,48 +518,39 @@
   const haloGroup = new THREE.Group();
   scene.add(haloGroup);
 
-  // Оновлення вінка (з state.selected)
   function updateWreath() {
     while(haloGroup.children.length) haloGroup.remove(haloGroup.children[0]);
     const count = window.state.selected.length;
     counterSpan.textContent = `${count}/12`;
-    
     if (count === 0) return;
-
     window.state.selected.forEach((f, i) => {
       const div = document.createElement('div');
-      div.innerHTML = `<img src="${flowerImages[f.id].src}" style="width:65px; height:65px; filter:drop-shadow(0 0 10px cyan);">`;
+      div.innerHTML = `<img src="${flowerImages[f.id].src}" style="width:65px; height:65px; filter:drop-shadow(0 0 10px #c9a23d);">`;
       const label = new CSS2DObject(div);
       const angle = (i / count) * Math.PI * 2;
-      label.position.set(Math.cos(angle) * 0.8, Math.sin(angle) * 0.3, 0); 
+      label.position.set(Math.cos(angle) * 0.8, Math.sin(angle) * 0.3, 0);
       haloGroup.add(label);
     });
   }
 
-  // Стрічки (як раніше)
   function drawRibbons(landmarks) {
     const left = landmarks[234], right = landmarks[454];
     const headW = Math.abs(right.x * canvas.width - left.x * canvas.width);
-    const time = Date.now() / 200;
-    const wave = Math.sin(time) * 25;
-
+    const wave = Math.sin(Date.now() / 200) * 25;
     ctx.save();
     ctx.lineWidth = canvas.width * 0.035;
     ctx.lineCap = 'round';
     ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(0,0,0,0.4)';
-
     const drawSide = (point, side) => {
       const sx = point.x * canvas.width;
       const sy = point.y * canvas.height - headW * 0.3;
       const ex = side === 'left' ? canvas.width * 0.2 : canvas.width * 0.8;
       const ey = canvas.height * 0.9;
-
       ctx.strokeStyle = '#2a6f9c';
       ctx.beginPath();
       ctx.moveTo(sx - (side==='left'? 8 : -8), sy);
       ctx.bezierCurveTo(sx + (side==='left'? -80 : 80) + wave, sy + 150, ex + (side==='left'? 60 : -60) - wave, ey - 120, ex - 8, ey);
       ctx.stroke();
-
       ctx.strokeStyle = '#e0b044';
       ctx.beginPath();
       ctx.moveTo(sx + (side==='left'? 8 : -8), sy);
@@ -290,53 +561,45 @@
     ctx.restore();
   }
 
-  // Сканування QR-коду
   function scanQRCode() {
-    if (canvas.width === 0 || canvas.height === 0) return;
+    if (canvas.width === 0) return;
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(imageData.data, canvas.width, canvas.height);
     if (code && QR_FLOWER_MAP[code.data]) {
       const flowerId = QR_FLOWER_MAP[code.data];
       if (!foundFlowers.includes(flowerId)) {
         foundFlowers.push(flowerId);
-        saveFoundFlowers();
+        saveFound();
         const flower = flowers.find(f => f.id === flowerId);
         document.getElementById('popupText').textContent = `🌼 ${flower.name} знайдено!`;
         document.getElementById('flowerNamePopup').classList.add('show');
         setTimeout(() => document.getElementById('flowerNamePopup').classList.remove('show'), 2500);
         addSound.play().catch(()=>{});
         updateHerbariumUI();
-        if (navigator.vibrate) navigator.vibrate(50);
+        if (navigator.vibrate) navigator.vibrate(30);
       }
     }
   }
 
-  // Основний цикл результатів FaceMesh
-  window.onResults = function(results) {
+  window.onResults = (results) => {
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-    
-    // QR-сканування (раз на 10 кадрів для продуктивності)
     if (Math.random() < 0.3) scanQRCode();
-
     if (results.multiFaceLandmarks?.[0]) {
       const l = results.multiFaceLandmarks[0];
       const centerX = (l[234].x + l[454].x) / 2;
       const centerY = (l[10].y + l[168].y) / 2 - 0.02;
-      
       haloGroup.position.set((centerX - 0.5) * 5, -(centerY - 0.5) * 5, -l[1].z * 5);
       haloGroup.rotation.z = Math.atan2(l[454].y - l[234].y, l[454].x - l[234].x);
-
-      const mouthWidth = Math.hypot(l[61].x - l[291].x, l[61].y - l[291].y);
-      if (mouthWidth > 0.18) drawRibbons(l);
+      if (Math.hypot(l[61].x - l[291].x, l[61].y - l[291].y) > 0.18) drawRibbons(l);
     }
     ctx.restore();
     renderer.render(scene, camera);
     labelRenderer.render(scene, camera);
   };
 
-  // UI: скрол для ручного вибору
+  // UI: скрол квітів
   const scroll = document.getElementById('flowerScroll');
   flowers.forEach(f => {
     const card = document.createElement('div');
@@ -346,7 +609,6 @@
       document.getElementById('popupText').textContent = f.name;
       document.getElementById('flowerNamePopup').classList.add('show');
       setTimeout(() => document.getElementById('flowerNamePopup').classList.remove('show'), 2000);
-      
       if (window.state.selected.length < 15) {
         window.state.selected.push({id: f.id});
         updateWreath();
@@ -363,48 +625,38 @@
     flowers.forEach(f => {
       const item = document.createElement('div');
       item.className = `herb-item ${foundFlowers.includes(f.id) ? 'found' : ''}`;
-      item.innerHTML = `<img src="${f.src}"><div style="font-size:10px;">${f.name.split(' ')[0]}</div>`;
+      item.innerHTML = `<img src="${f.src}"><span>${f.name.split(' ')[0]}</span>`;
       herbariumGrid.appendChild(item);
     });
   }
   updateHerbariumUI();
 
-  document.getElementById('toggleHerbarium').onclick = () => {
-    document.getElementById('herbariumPanel').classList.add('show');
-  };
-  document.getElementById('closeHerbarium').onclick = () => {
-    document.getElementById('herbariumPanel').classList.remove('show');
-  };
-
-  // Кнопка "Сплести вінок із знайденого"
+  document.getElementById('toggleHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.add('show');
+  document.getElementById('closeHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.remove('show');
   document.getElementById('useHerbariumBtn').onclick = () => {
-    if (foundFlowers.length === 0) {
-      alert('Спочатку знайди хоча б одну квітку через QR!');
-      return;
-    }
+    if (foundFlowers.length === 0) { showError('Спочатку знайди квіти через QR!'); return; }
     window.state.selected = foundFlowers.map(id => ({ id }));
     updateWreath();
     document.getElementById('herbariumPanel').classList.remove('show');
   };
 
   // Старт
-  document.getElementById('startBtn').onclick = () => {
+  document.getElementById('startBtn').onclick = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) { showError('Камера недоступна'); return; }
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true });
+    } catch (e) { showError('Дозвіл на камеру відхилено'); return; }
     document.getElementById('welcome').classList.add('hidden');
     document.getElementById('fonMusic').play().catch(()=>{});
-    
     const faceMesh = new FaceMesh({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
     faceMesh.setOptions({refineLandmarks: true, minDetectionConfidence: 0.5});
     faceMesh.onResults(window.onResults);
     new Camera(video, {
-      onFrame: async () => { 
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        await faceMesh.send({image: video}); 
-      },
+      onFrame: async () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; await faceMesh.send({image: video}); },
       width: 1280, height: 720
     }).start();
   };
 
-  // Скріншот
   window.capturePhoto = () => {
     const finalCanvas = document.createElement('canvas');
     finalCanvas.width = canvas.width; finalCanvas.height = canvas.height;
@@ -412,14 +664,12 @@
     fCtx.drawImage(canvas, 0, 0);
     fCtx.drawImage(renderer.domElement, 0, 0, finalCanvas.width, finalCanvas.height);
     const link = document.createElement('a');
-    link.download = `herbarium-${Date.now()}.png`;
+    link.download = `lessa-${Date.now()}.png`;
     link.href = finalCanvas.toDataURL('image/png');
     link.click();
-    if (navigator.vibrate) navigator.vibrate(30);
   };
 
   window.resetWreath = () => { window.state.selected = []; updateWreath(); };
-
   document.getElementById('shareBtn').onclick = async () => {
     window.capturePhoto();
     const finalCanvas = document.createElement('canvas');
@@ -428,9 +678,9 @@
     fCtx.drawImage(canvas, 0, 0);
     fCtx.drawImage(renderer.domElement, 0, 0, finalCanvas.width, finalCanvas.height);
     const blob = await new Promise(r => finalCanvas.toBlob(r, 'image/png'));
-    const file = new File([blob], 'herbarium.png', { type: 'image/png' });
+    const file = new File([blob], 'lessa.png', { type: 'image/png' });
     if (navigator.canShare?.({files: [file]})) {
-      await navigator.share({ files: [file], title: 'Мій гербарій', text: `Я знайшов ${foundFlowers.length} рідкісних квітів у школі! Спробуй і ти: https://lessa2332.github.io/naturel/` });
+      await navigator.share({ files: [file], title: 'Мій гербарій', text: `Я знайшов ${foundFlowers.length} рідкісних квітів! Спробуй: https://lessa2332.github.io/naturel/` });
     } else { alert('Фото збережено!'); }
   };
 
