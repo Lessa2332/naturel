@@ -13,12 +13,14 @@
       }
     }
   </script>
+  <!-- jsQR підключаємо як звичайний скрипт, бо він не ESM -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    /* (вставте повністю стилі з попередньої версії – вони не змінилися) */
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     :root { --gold: #c9a23d; --gold-light: #e2c47c; --dark-bg: #0a0f0a; --glass: rgba(20,30,20,0.65); --blur: blur(20px); --safe-bottom: env(safe-area-inset-bottom,0px); }
     body { background: #0a0f0a; font-family: system-ui; color: #fff; height: 100dvh; overflow: hidden; position: fixed; width: 100%; }
-    #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); z-index: 10; }
+    .ar-viewport { position: relative; width: 100%; height: 100dvh; overflow: hidden; }
+    #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%); z-index: 10; }
     .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: #050805; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; opacity: 1; visibility: visible; transition: opacity 0.5s; }
     .welcome-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .welcome-logo { font-size: clamp(2rem,10vw,4.5rem); font-weight: 700; letter-spacing: 6px; color: var(--gold); text-shadow: 0 0 15px rgba(201,162,61,0.4); animation: pulse 2s infinite; }
@@ -98,8 +100,11 @@
 <script type="module">
   import * as THREE from 'three';
   import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
-  import jsQR from 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
-
+  
+  // jsQR підключений глобально через script tag
+  const jsQR = window.jsQR;
+  if (!jsQR) console.error('jsQR не завантажився!');
+  
   // ---------- КОНФІГУРАЦІЯ ----------
   const FLOWERS = [
     { id: 1, name: 'Шафран Гейфелів', img: 'flower_1.png' }, { id: 2, name: 'Нарцис', img: 'flower_2.png' },
@@ -224,12 +229,33 @@
       const sprite = new THREE.Sprite(material);
       const angle = (i / count) * Math.PI * 2;
       const radius = 0.85;
-      sprite.position.set(Math.cos(angle) * radius, Math.sin(angle) * 0.35 + 0.15, 0); // зсув вгору
+      sprite.position.set(Math.cos(angle) * radius, Math.sin(angle) * 0.35 + 0.15, 0);
       sprite.scale.set(0.55, 0.55, 1);
       wreathGroup.add(sprite);
     });
   }
   function animate3D() { requestAnimationFrame(animate3D); if(renderer && scene && camera3D) renderer.render(scene, camera3D); }
+
+  // Динамічне дзеркалювання
+  function updateMirror() {
+    const mirror = currentFacingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+    const transformValue = `translate(-50%, -50%) ${mirror}`;
+    video.style.transform = transformValue;
+    canvas2d.style.transform = transformValue;
+  }
+
+  // Встановлення розміру canvas
+  function setCanvasSize() {
+    if (video.videoWidth && video.videoHeight) {
+      canvas2d.width = video.videoWidth;
+      canvas2d.height = video.videoHeight;
+      console.log(`Canvas size set to ${canvas2d.width}x${canvas2d.height}`);
+    } else {
+      // fallback
+      canvas2d.width = 640;
+      canvas2d.height = 480;
+    }
+  }
 
   // Камера та AR
   async function switchCamera() {
@@ -243,6 +269,8 @@
     currentStream = stream;
     video.srcObject = stream;
     await video.play();
+    setCanvasSize();
+    updateMirror();
   }
 
   async function initFaceLandmarker() {
@@ -258,6 +286,7 @@
       runningMode: "VIDEO",
       numFaces: 1
     });
+    console.log("FaceLandmarker ініціалізовано");
   }
 
   function processVideo() {
@@ -272,16 +301,18 @@
     ctx2d.drawImage(video, 0, 0, canvas2d.width, canvas2d.height);
     
     // QR сканування
-    const imageData = ctx2d.getImageData(0, 0, canvas2d.width, canvas2d.height);
-    const code = jsQR(imageData.data, canvas2d.width, canvas2d.height);
-    if (code && QR_MAP[code.data]) {
-      addFlower(QR_MAP[code.data]);
-      failedQRattempts = 0;
-    } else {
-      failedQRattempts++;
-      if (failedQRattempts > 30 && currentFacingMode === 'environment') {
-        showInfo('📸 Спробуй піднести телефон ближче до світла');
+    if (jsQR && canvas2d.width > 0 && canvas2d.height > 0) {
+      const imageData = ctx2d.getImageData(0, 0, canvas2d.width, canvas2d.height);
+      const code = jsQR(imageData.data, canvas2d.width, canvas2d.height);
+      if (code && QR_MAP[code.data]) {
+        addFlower(QR_MAP[code.data]);
         failedQRattempts = 0;
+      } else {
+        failedQRattempts++;
+        if (failedQRattempts > 30 && currentFacingMode === 'environment') {
+          showInfo('📸 Спробуй піднести телефон ближче до світла');
+          failedQRattempts = 0;
+        }
       }
     }
     
@@ -313,6 +344,12 @@
     video = document.getElementById('videoElement');
     canvas2d = document.getElementById('outputCanvas');
     ctx2d = canvas2d.getContext('2d');
+    
+    video.addEventListener('loadedmetadata', () => {
+      setCanvasSize();
+      updateMirror();
+    });
+    
     initThree();
     
     const scroll = document.getElementById('flowerScroll');
@@ -332,19 +369,15 @@
       scroll.appendChild(card);
     });
 
-    document.getElementById('resetWreathBtn')?.addEventListener('click', () => {
-      wreathFlowers = [];
-      saveLocal();
-      updateWreath3D();
-      showInfo('Вінок очищено');
-    });
     document.getElementById('captureBtn').onclick = () => {
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = canvas2d.width;
       finalCanvas.height = canvas2d.height;
       const fCtx = finalCanvas.getContext('2d');
       fCtx.drawImage(canvas2d, 0, 0);
-      fCtx.drawImage(renderer.domElement, 0, 0);
+      if (renderer && renderer.domElement) {
+        fCtx.drawImage(renderer.domElement, 0, 0);
+      }
       const link = document.createElement('a');
       link.download = `lessa-${Date.now()}.png`;
       link.href = finalCanvas.toDataURL('image/png');
@@ -380,6 +413,7 @@
 
   // Старт
   document.getElementById('startBtn').onclick = async () => {
+    console.log("Кнопка натиснута");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { exact: currentFacingMode }, width: { ideal: 640 }, height: { ideal: 480 } }
@@ -390,7 +424,7 @@
       document.getElementById('welcome').classList.add('hidden');
       startAR();
     } catch (err) {
-      showError('Помилка доступу до камери. Перевірте дозволи.');
+      showError('Помилка доступу до камери. Перевірте дозволи та запуск через HTTPS.');
       console.error(err);
     }
   };
