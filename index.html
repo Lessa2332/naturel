@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="uk">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0a0f0a">
   <title>SmartLessa · Портал Хранителів</title>
   
-  <!-- Import Map (обов'язково для модулів Three.js та jsQR) -->
+  <!-- Import MAP – обов'язково для модулів Three.js та jsQR -->
   <script type="importmap">
     {
       "imports": {
@@ -17,372 +17,54 @@
   </script>
   
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    :root {
-      --gold: #c9a23d;
-      --gold-light: #e2c47c;
-      --dark: #0a0f0a;
-      --glass: rgba(20, 30, 20, 0.65);
-      --blur: blur(20px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-    }
-
-    body {
-      background: #000;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      color: #fff;
-      height: 100dvh;
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-    }
-
-    #videoElement, #outputCanvas {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transform: translate(-50%, -50%) scaleX(-1);
-      z-index: 10;
-    }
-
-    /* Заставка (виправлена — не виходить за межі) */
-    .welcome-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      background: #050805;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 20px;
-      opacity: 1;
-      visibility: visible;
-      transition: opacity 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1), visibility 0.8s;
-    }
-
-    .welcome-screen.hidden {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    .welcome-logo {
-      font-size: clamp(2.5rem, 12vw, 5rem);
-      font-weight: 700;
-      letter-spacing: 8px;
-      color: var(--gold);
-      text-shadow: 0 0 20px rgba(201, 162, 61, 0.5);
-      margin-bottom: 20px;
-      animation: pulseGlow 2s infinite ease-in-out;
-    }
-
-    @keyframes pulseGlow {
-      0% { text-shadow: 0 0 5px rgba(201,162,61,0.3); transform: scale(1); }
-      50% { text-shadow: 0 0 30px rgba(201,162,61,0.8); transform: scale(1.02); }
-      100% { text-shadow: 0 0 5px rgba(201,162,61,0.3); transform: scale(1); }
-    }
-
-    .welcome-desc {
-      color: #ccc;
-      max-width: 320px;
-      margin-bottom: 20px;
-      font-size: 16px;
-    }
-
-    .start-btn {
-      background: transparent;
-      border: 2px solid var(--gold);
-      color: var(--gold);
-      padding: 16px 48px;
-      border-radius: 60px;
-      font-weight: 600;
-      font-size: 18px;
-      letter-spacing: 4px;
-      cursor: pointer;
-      transition: 0.2s;
-      margin-top: 20px;
-      backdrop-filter: blur(10px);
-    }
-
-    .start-btn:active {
-      transform: scale(0.96);
-      background: var(--gold);
-      color: #000;
-    }
-
-    /* Інші стилі інтерфейсу */
-    .glass-panel {
-      background: var(--glass);
-      backdrop-filter: var(--blur);
-      border: 1px solid rgba(201,162,61,0.25);
-      border-radius: 32px;
-    }
-
-    .herbarium-panel {
-      position: absolute;
-      top: max(20px, env(safe-area-inset-top));
-      left: 20px;
-      right: 20px;
-      z-index: 1200;
-      padding: 24px 20px;
-      max-height: calc(100dvh - 100px);
-      overflow-y: auto;
-      display: none;
-      backdrop-filter: blur(30px);
-      background: rgba(10,20,10,0.8);
-      border: 1px solid rgba(201,162,61,0.4);
-      border-radius: 36px;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    :root { --gold: #c9a23d; --gold-light: #e2c47c; --dark: #0a0f0a; --glass: rgba(20,30,20,0.65); --blur: blur(20px); --safe-bottom: env(safe-area-inset-bottom, 0px); }
+    body { background: #000; font-family: 'Inter', system-ui, -apple-system, sans-serif; color: #fff; height: 100dvh; overflow: hidden; position: fixed; width: 100%; }
+    #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); z-index: 10; }
+    .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: #050805; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; opacity: 1; visibility: visible; transition: opacity 0.8s cubic-bezier(0.2,0.9,0.4,1.1), visibility 0.8s; }
+    .welcome-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .welcome-logo { font-size: clamp(2.5rem, 12vw, 5rem); font-weight: 700; letter-spacing: 8px; color: var(--gold); text-shadow: 0 0 20px rgba(201,162,61,0.5); margin-bottom: 20px; animation: pulseGlow 2s infinite ease-in-out; }
+    @keyframes pulseGlow { 0% { text-shadow: 0 0 5px rgba(201,162,61,0.3); transform: scale(1); } 50% { text-shadow: 0 0 30px rgba(201,162,61,0.8); transform: scale(1.02); } 100% { text-shadow: 0 0 5px rgba(201,162,61,0.3); transform: scale(1); } }
+    .welcome-desc { color: #ccc; max-width: 320px; margin-bottom: 20px; font-size: 16px; }
+    .start-btn { background: transparent; border: 2px solid var(--gold); color: var(--gold); padding: 16px 48px; border-radius: 60px; font-weight: 600; font-size: 18px; letter-spacing: 4px; cursor: pointer; transition: 0.2s; margin-top: 20px; backdrop-filter: blur(10px); }
+    .start-btn:active { transform: scale(0.96); background: var(--gold); color: #000; }
+    .herbarium-panel { position: absolute; top: max(20px, env(safe-area-inset-top)); left: 20px; right: 20px; z-index: 1200; padding: 24px 20px; max-height: calc(100dvh - 100px); overflow-y: auto; display: none; backdrop-filter: blur(30px); background: rgba(10,20,10,0.8); border: 1px solid rgba(201,162,61,0.4); border-radius: 36px; }
     .herbarium-panel.show { display: block; }
-
-    .herbarium-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(80px,1fr));
-      gap: 16px;
-      margin-top: 20px;
-    }
-
-    .herb-item {
-      background: rgba(255,255,255,0.03);
-      border-radius: 20px;
-      padding: 12px 8px;
-      text-align: center;
-      border: 1px solid rgba(201,162,61,0.2);
-      transition: all 0.2s ease;
-    }
-    .herb-item.found {
-      border-color: var(--gold);
-      background: rgba(201,162,61,0.1);
-      box-shadow: 0 0 20px rgba(201,162,61,0.2);
-      animation: pop 0.3s ease;
-    }
-    @keyframes pop {
-      0% { transform: scale(0.9); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-    .herb-item img {
-      width: 60px;
-      height: 60px;
-      object-fit: contain;
-      filter: grayscale(0.7);
-      transition: filter 0.3s;
-    }
+    .herbarium-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px,1fr)); gap: 16px; margin-top: 20px; }
+    .herb-item { background: rgba(255,255,255,0.03); border-radius: 20px; padding: 12px 8px; text-align: center; border: 1px solid rgba(201,162,61,0.2); transition: all 0.2s ease; }
+    .herb-item.found { border-color: var(--gold); background: rgba(201,162,61,0.1); box-shadow: 0 0 20px rgba(201,162,61,0.2); animation: pop 0.3s ease; }
+    @keyframes pop { 0% { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .herb-item img { width: 60px; height: 60px; object-fit: contain; filter: grayscale(0.7); transition: filter 0.3s; }
     .herb-item.found img { filter: none; }
-    .herb-item span {
-      display: block;
-      font-size: 12px;
-      margin-top: 8px;
-      color: var(--gold-light);
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 16px;
-      right: 20px;
-      background: none;
-      border: none;
-      color: var(--gold);
-      font-size: 32px;
-      cursor: pointer;
-      width: 48px;
-      height: 48px;
-      border-radius: 30px;
-    }
-
-    .hologram-panel {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      right: 16px;
-      padding: 20px 16px calc(20px + var(--safe-bottom));
-      background: rgba(10,18,10,0.5);
-      backdrop-filter: blur(30px);
-      border: 1px solid rgba(201,162,61,0.3);
-      border-radius: 48px 48px 32px 32px;
-      z-index: 1000;
-    }
-
-    .mission-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      padding: 0 8px;
-    }
-    .mission-title {
-      color: var(--gold-light);
-      font-weight: 500;
-      letter-spacing: 1.5px;
-      font-size: 14px;
-      text-transform: uppercase;
-    }
-    .flower-counter {
-      background: rgba(201,162,61,0.15);
-      padding: 8px 18px;
-      border-radius: 40px;
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-weight: 600;
-      font-size: 16px;
-    }
-
-    .flower-scroll {
-      display: flex;
-      gap: 14px;
-      overflow-x: auto;
-      padding: 8px 4px 16px;
-      margin-bottom: 8px;
-      scrollbar-width: none;
-    }
+    .herb-item span { display: block; font-size: 12px; margin-top: 8px; color: var(--gold-light); }
+    .close-btn { position: absolute; top: 16px; right: 20px; background: none; border: none; color: var(--gold); font-size: 32px; cursor: pointer; width: 48px; height: 48px; border-radius: 30px; }
+    .hologram-panel { position: absolute; bottom: 16px; left: 16px; right: 16px; padding: 20px 16px calc(20px + var(--safe-bottom)); background: rgba(10,18,10,0.5); backdrop-filter: blur(30px); border: 1px solid rgba(201,162,61,0.3); border-radius: 48px 48px 32px 32px; z-index: 1000; }
+    .mission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 0 8px; }
+    .mission-title { color: var(--gold-light); font-weight: 500; letter-spacing: 1.5px; font-size: 14px; text-transform: uppercase; }
+    .flower-counter { background: rgba(201,162,61,0.15); padding: 8px 18px; border-radius: 40px; border: 1px solid var(--gold); color: var(--gold); font-weight: 600; font-size: 16px; }
+    .flower-scroll { display: flex; gap: 14px; overflow-x: auto; padding: 8px 4px 16px; margin-bottom: 8px; scrollbar-width: none; }
     .flower-scroll::-webkit-scrollbar { display: none; }
-
-    .item-card {
-      min-width: 80px;
-      height: 80px;
-      background: rgba(255,255,255,0.03);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(201,162,61,0.25);
-      border-radius: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
-      transition: all 0.2s;
-    }
-    .item-card:active {
-      transform: scale(0.92);
-      background: rgba(201,162,61,0.2);
-    }
-    .item-card img {
-      width: 55px;
-      height: 55px;
-      object-fit: contain;
-    }
-
-    .action-bar {
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      padding: 8px 0 4px;
-    }
-    .gold-btn {
-      background: none;
-      border: 1.5px solid var(--gold);
-      color: var(--gold);
-      width: 64px;
-      height: 64px;
-      border-radius: 40px;
-      font-size: 30px;
-      backdrop-filter: blur(10px);
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .gold-btn:active {
-      transform: scale(0.9);
-      background: var(--gold);
-      color: #000;
-    }
-    .shutter {
-      width: 80px;
-      height: 80px;
-      border-radius: 60px;
-      border: 3px solid var(--gold);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      background: rgba(0,0,0,0.2);
-      backdrop-filter: blur(10px);
-    }
+    .item-card { min-width: 80px; height: 80px; background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(201,162,61,0.25); border-radius: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; }
+    .item-card:active { transform: scale(0.92); background: rgba(201,162,61,0.2); }
+    .item-card img { width: 55px; height: 55px; object-fit: contain; }
+    .action-bar { display: flex; justify-content: space-around; align-items: center; padding: 8px 0 4px; }
+    .gold-btn { background: none; border: 1.5px solid var(--gold); color: var(--gold); width: 64px; height: 64px; border-radius: 40px; font-size: 30px; backdrop-filter: blur(10px); cursor: pointer; transition: 0.2s; }
+    .gold-btn:active { transform: scale(0.9); background: var(--gold); color: #000; }
+    .shutter { width: 80px; height: 80px; border-radius: 60px; border: 3px solid var(--gold); display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); }
     .shutter:active { transform: scale(0.92); }
-    .shutter-inner {
-      width: 70%;
-      height: 70%;
-      background: var(--gold);
-      border-radius: 50%;
-      box-shadow: 0 0 25px var(--gold);
-    }
-
-    #flowerNamePopup {
-      position: fixed;
-      top: 18%;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(10,20,10,0.9);
-      backdrop-filter: blur(30px);
-      padding: 14px 28px;
-      border-radius: 60px;
-      border: 1px solid var(--gold);
-      z-index: 1100;
-      opacity: 0;
-      transition: opacity 0.4s;
-      pointer-events: none;
-      color: var(--gold-light);
-    }
+    .shutter-inner { width: 70%; height: 70%; background: var(--gold); border-radius: 50%; box-shadow: 0 0 25px var(--gold); }
+    #flowerNamePopup { position: fixed; top: 18%; left: 50%; transform: translateX(-50%); background: rgba(10,20,10,0.9); backdrop-filter: blur(30px); padding: 14px 28px; border-radius: 60px; border: 1px solid var(--gold); z-index: 1100; opacity: 0; transition: opacity 0.4s; pointer-events: none; color: var(--gold-light); }
     #flowerNamePopup.show { opacity: 1; }
-
-    .herbarium-toggle {
-      position: absolute;
-      top: calc(20px + env(safe-area-inset-top));
-      left: 20px;
-      z-index: 1050;
-      width: 56px;
-      height: 56px;
-      border-radius: 30px;
-      background: rgba(20,30,20,0.6);
-      backdrop-filter: blur(15px);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-size: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-    }
-
-    .error-toast, .info-toast {
-      position: fixed;
-      bottom: 120px;
-      left: 20px;
-      right: 20px;
-      background: rgba(180,40,40,0.9);
-      color: white;
-      padding: 16px;
-      border-radius: 40px;
-      text-align: center;
-      z-index: 1300;
-      backdrop-filter: blur(20px);
-      display: none;
-    }
-    .info-toast {
-      background: rgba(0,100,0,0.9);
-    }
-    #leaderboard {
-      background: rgba(0,0,0,0.5);
-      border-radius: 20px;
-      padding: 10px;
-      margin-top: 20px;
-      font-size: 14px;
-    }
+    .herbarium-toggle { position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 20px; z-index: 1050; width: 56px; height: 56px; border-radius: 30px; background: rgba(20,30,20,0.6); backdrop-filter: blur(15px); border: 1px solid var(--gold); color: var(--gold); font-size: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .error-toast, .info-toast { position: fixed; bottom: 120px; left: 20px; right: 20px; background: rgba(180,40,40,0.9); color: white; padding: 16px; border-radius: 40px; text-align: center; z-index: 1300; backdrop-filter: blur(20px); display: none; }
+    .info-toast { background: rgba(0,100,0,0.9); }
+    #leaderboard { background: rgba(0,0,0,0.5); border-radius: 20px; padding: 10px; margin-top: 20px; font-size: 14px; }
     #leaderboard span { color: var(--gold); }
     button { cursor: pointer; }
   </style>
 </head>
 <body>
 
-<!-- ЗАСТАВКА -->
 <div class="welcome-screen" id="welcome">
   <div class="welcome-logo">SMARTLESSA</div>
   <div class="welcome-desc">Таємна локація · Шкільний портал</div>
@@ -391,7 +73,6 @@
   <p style="margin-top: 40px; color: #888; font-size: 12px;">піднеси долоню до камери</p>
 </div>
 
-<!-- Інтерфейс -->
 <div class="herbarium-toggle" id="toggleHerbarium">🌿</div>
 <div class="herbarium-panel" id="herbariumPanel">
   <button class="close-btn" id="closeHerbarium">✕</button>
@@ -424,7 +105,6 @@
 
 <div class="error-toast" id="errorToast"></div>
 <div class="info-toast" id="infoToast"></div>
-
 <audio id="addSound" src="data:audio/wav;base64,UklGRlwAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVoAAACAgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f3+AgICAf39/f39/f38="></audio>
 
 <script type="module">
@@ -450,7 +130,6 @@
   let foundFlowers = [];
   let wreathFlowers = [];
 
-  // Локальне збереження
   function loadLocal() {
     const stored = localStorage.getItem('smartlessa_found');
     foundFlowers = stored ? JSON.parse(stored) : [];
@@ -463,15 +142,14 @@
   }
   loadLocal();
 
-  // Допоміжні функції UI
-  function showPopup(msg, duration = 2000) {
+  function showPopup(msg, duration=2000) {
     const popup = document.getElementById('flowerNamePopup');
     document.getElementById('popupText').textContent = msg;
     popup.classList.add('show');
     setTimeout(() => popup.classList.remove('show'), duration);
   }
   function playSound() {
-    document.getElementById('addSound').play().catch(() => {});
+    document.getElementById('addSound').play().catch(()=>{});
   }
   function showError(msg) {
     const toast = document.getElementById('errorToast');
@@ -495,7 +173,6 @@
       showPopup(`🌼 ${flower.name} знайдено!`, 2500);
       playSound();
       if (navigator.vibrate) navigator.vibrate(50);
-      // Анімація в гербарії
       const herbItem = document.querySelector(`.herb-item[data-id='${flowerId}']`);
       if (herbItem) herbItem.classList.add('found');
     }
@@ -515,7 +192,7 @@
     updateWreath3D();
   }
 
-  // ---------- THREE.JS ВІНОК ----------
+  // Three.js вінок
   const renderer = new THREE.WebGLRenderer({ alpha: true, preserveDrawingBuffer: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.domElement.style.position = 'absolute';
@@ -524,27 +201,24 @@
   renderer.domElement.style.zIndex = '15';
   renderer.domElement.style.pointerEvents = 'none';
   document.querySelector('.ar-viewport').appendChild(renderer.domElement);
-
   const scene = new THREE.Scene();
-  const camera3D = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const camera3D = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
   camera3D.position.z = 5;
   const wreathGroup = new THREE.Group();
   scene.add(wreathGroup);
 
   function updateWreath3D() {
-    while (wreathGroup.children.length) wreathGroup.remove(wreathGroup.children[0]);
+    while(wreathGroup.children.length) wreathGroup.remove(wreathGroup.children[0]);
     const count = wreathFlowers.length;
     if (count === 0) return;
     wreathFlowers.forEach((id, i) => {
       const flower = FLOWERS.find(f => f.id === id);
       if (!flower) return;
-      // Створюємо спрайт з текстурою (літера квітки)
       const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
+      canvas.width = 128; canvas.height = 128;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#c9a23d';
-      ctx.fillRect(0, 0, 128, 128);
+      ctx.fillRect(0,0,128,128);
       ctx.fillStyle = 'white';
       ctx.font = 'bold 20px Inter';
       ctx.fillText(flower.name[0], 50, 70);
@@ -558,14 +232,10 @@
       wreathGroup.add(sprite);
     });
   }
-
-  function animate3D() {
-    requestAnimationFrame(animate3D);
-    renderer.render(scene, camera3D);
-  }
+  function animate3D() { requestAnimationFrame(animate3D); renderer.render(scene, camera3D); }
   animate3D();
 
-  // ---------- AR та КАМЕРА ----------
+  // AR та камера
   const video = document.getElementById('videoElement');
   const canvas2d = document.getElementById('outputCanvas');
   const ctx2d = canvas2d.getContext('2d');
@@ -575,9 +245,7 @@
   async function startAR() {
     const { FaceMesh } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js');
     const { Camera } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
-    faceMesh = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
+    faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
     faceMesh.setOptions({ refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
     faceMesh.onResults(onResults);
     const camera = new Camera(video, {
@@ -588,8 +256,7 @@
           await faceMesh.send({ image: video });
         }
       },
-      width: 640,
-      height: 480
+      width: 640, height: 480
     });
     camera.start();
   }
@@ -598,7 +265,6 @@
     ctx2d.save();
     ctx2d.clearRect(0, 0, canvas2d.width, canvas2d.height);
     ctx2d.drawImage(results.image, 0, 0, canvas2d.width, canvas2d.height);
-    
     frameCount++;
     if (frameCount % 10 === 0) {
       const imageData = ctx2d.getImageData(0, 0, canvas2d.width, canvas2d.height);
@@ -607,7 +273,6 @@
         addFlower(QR_MAP[code.data]);
       }
     }
-    
     if (results.multiFaceLandmarks && results.multiFaceLandmarks[0]) {
       const lm = results.multiFaceLandmarks[0];
       const centerX = (lm[234].x + lm[454].x) / 2;
@@ -618,7 +283,7 @@
     ctx2d.restore();
   }
 
-  // ---------- ІНІЦІАЛІЗАЦІЯ UI ЕЛЕМЕНТІВ ----------
+  // UI елементи
   const scroll = document.getElementById('flowerScroll');
   FLOWERS.forEach(f => {
     const card = document.createElement('div');
@@ -661,16 +326,13 @@
     if (navigator.share) {
       try {
         await navigator.share({ title: 'Мій гербарій', text: `Я знайшов ${foundFlowers.length} квітів!` });
-      } catch (e) {}
+      } catch(e) {}
     }
   };
   document.getElementById('toggleHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.add('show');
   document.getElementById('closeHerbarium').onclick = () => document.getElementById('herbariumPanel').classList.remove('show');
   document.getElementById('useHerbariumBtn').onclick = () => {
-    if (foundFlowers.length === 0) {
-      showError('Спочатку знайди квіти через QR!');
-      return;
-    }
+    if (foundFlowers.length === 0) { showError('Спочатку знайди квіти через QR!'); return; }
     wreathFlowers = [...foundFlowers];
     saveLocal();
     updateWreath3D();
@@ -678,7 +340,7 @@
     showInfo(`Вінок зібрано з ${wreathFlowers.length} квітів!`);
   };
   document.getElementById('resetProgressBtn').onclick = () => {
-    if (confirm('Скинути весь прогрес? Всі знайдені квіти зникнуть.')) {
+    if (confirm('Скинути весь прогрес?')) {
       foundFlowers = [];
       wreathFlowers = [];
       saveLocal();
@@ -688,8 +350,9 @@
     }
   };
 
-  // ---------- ОБРОБНИК КНОПКИ АКТИВУВАТИ ----------
+  // ГОЛОВНЕ: обробник кнопки АКТИВУВАТИ
   document.getElementById('startBtn').onclick = async () => {
+    console.log('Кнопка натиснута');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
@@ -699,19 +362,17 @@
       document.getElementById('welcome').classList.add('hidden');
       startAR();
     } catch (err) {
-      showError('Помилка доступу до камери. Перевірте дозволи.');
       console.error(err);
+      showError('Помилка доступу до камери. Перевірте дозволи.');
     }
   };
 
-  // Адаптація розміру вікна
   window.addEventListener('resize', () => {
     camera3D.aspect = window.innerWidth / window.innerHeight;
     camera3D.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Початкове оновлення UI
   updateUI();
 </script>
 </body>
