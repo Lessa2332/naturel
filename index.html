@@ -1,224 +1,228 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>SmartLessa · AR Quest 2026</title>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
-        "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm"
-      }
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    :root { --gold: #c9a23d; --dark: #0a0f0a; --glass: rgba(10,15,10,0.85); }
-    body { background: var(--dark); font-family: system-ui, sans-serif; color: #fff; height: 100dvh; overflow: hidden; position: fixed; width: 100%; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SmartLessa · AR Quest 2026</title>
+    <style>
+        :root { --gold: #c9a23d; --dark: #0a0f0a; --glass: rgba(10,15,10,0.85); --white: #ffffff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--dark); font-family: system-ui, sans-serif; color: #fff; height: 100vh; overflow: hidden; position: fixed; width: 100%; }
 
-    .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: radial-gradient(circle, #1a251a, #050805); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; transition: 0.5s; }
-    .welcome-screen.hidden { opacity: 0; pointer-events: none; }
-    
-    .ar-viewport { position: relative; width: 100%; height: 100%; background: #000; }
-    #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%); }
+        #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%) scaleX(-1); }
 
-    .ui-overlay { position: absolute; inset: 0; z-index: 100; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 40px 15px 30px; }
-    .top-bar, .controls { pointer-events: auto; display: flex; justify-content: space-between; align-items: center; }
-    
-    .bottom-panel { pointer-events: auto; background: var(--glass); border-radius: 35px; padding: 15px; border: 1px solid rgba(201,162,61,0.3); backdrop-filter: blur(15px); }
-    .flower-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 10px; }
-    
-    .item-card { min-width: 60px; height: 60px; background: rgba(255,255,255,0.05); border-radius: 15px; border: 1px dashed var(--gold); display: flex; align-items: center; justify-content: center; }
-    .item-card.found { border-style: solid; background: rgba(201,162,61,0.2); }
-    .item-card img { width: 45px; height: 45px; filter: grayscale(1) opacity(0.3); }
-    .item-card.found img { filter: none; opacity: 1; }
+        .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: radial-gradient(circle, #1a251a, #050805); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s; }
+        .welcome-screen.hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
+        
+        .smart-lessa-typo { font-size: 2.5rem; font-weight: 200; letter-spacing: 8px; color: var(--gold); text-transform: uppercase; margin-bottom: 10px; min-height: 1.2em; }
 
-    .btn-circle { width: 55px; height: 55px; border-radius: 50%; border: 2px solid var(--gold); background: none; color: var(--gold); font-size: 1.5rem; display: flex; align-items: center; justify-content: center; }
-    .btn-main { background: var(--gold); color: #000; flex: 1; border: none; padding: 15px; border-radius: 30px; font-weight: 800; margin: 0 10px; }
-    
-    #flowerNamePopup { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); background: var(--gold); color: #000; padding: 10px 25px; border-radius: 50px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 3000; }
-    #flowerNamePopup.show { opacity: 1; }
-  </style>
+        .ui-overlay { position: absolute; inset: 0; z-index: 100; pointer-events: none; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; }
+        .bottom-panel { pointer-events: auto; background: var(--glass); border-radius: 30px; padding: 15px; border: 1px solid rgba(201,162,61,0.3); backdrop-filter: blur(15px); margin-bottom: env(safe-area-inset-bottom); }
+        
+        .flower-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+        .flower-scroll::-webkit-scrollbar { display: none; }
+        
+        .item-card { min-width: 70px; height: 70px; background: rgba(255,255,255,0.05); border-radius: 18px; border: 1px dashed var(--gold); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.3s; }
+        .item-card.found { border-style: solid; background: rgba(201,162,61,0.2); transform: scale(1.05); }
+        .item-card img { width: 45px; height: 45px; filter: grayscale(1) opacity(0.3); }
+        .item-card.found img { filter: none; opacity: 1; }
+
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; gap: 10px; }
+        .btn-circle { width: 55px; height: 55px; border-radius: 50%; border: 1px solid var(--gold); background: rgba(0,0,0,0.3); color: var(--gold); font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        .btn-main { background: var(--gold); color: #000; flex: 1; border: none; padding: 15px; border-radius: 30px; font-weight: 800; cursor: pointer; text-transform: uppercase; }
+        
+        #counter { position: fixed; top: 40px; right: 20px; background: var(--glass); padding: 8px 20px; border-radius: 20px; border: 1px solid var(--gold); color: var(--gold); font-weight: 800; z-index: 150; }
+    </style>
 </head>
 <body>
 
 <div class="welcome-screen" id="welcome">
-  <h1 style="color:var(--gold); font-size: 3rem; margin-bottom: 10px;">SMARTLESSA</h1>
-  <p>Знайди 12 рослин та приміряй вінок</p>
-  <button class="btn-main" id="startBtn" style="margin-top: 30px; max-width: 250px;">АКТИВУВАТИ</button>
+    <div class="smart-lessa-typo" id="glitchLogo">SMARTLESSA</div>
+    <p style="color: var(--gold); opacity: 0.7; letter-spacing: 2px;">AR QUEST · FLORAL CODE</p>
+    <button class="btn-main" id="startBtn" style="margin-top: 40px; max-width: 260px;">АКТИВУВАТИ ПОРТАЛ</button>
 </div>
 
-<div id="flowerNamePopup">Квітка знайдена!</div>
+<div id="counter">0 / 12</div>
 
 <div class="ar-viewport">
-  <video id="videoElement" autoplay playsinline muted></video>
-  <canvas id="outputCanvas"></canvas>
-  <div class="ui-overlay">
-    <div class="top-bar">
-      <button class="btn-circle" onclick="location.reload()">🔄</button>
-      <div id="counter" style="background:var(--glass); padding: 8px 20px; border-radius: 20px; border: 1px solid var(--gold); color: var(--gold); font-weight:800;">0 / 12</div>
-      <button class="btn-circle" id="switchCam">🤳</button>
+    <video id="videoElement" autoplay playsinline muted></video>
+    <canvas id="outputCanvas"></canvas>
+    
+    <div class="ui-overlay">
+        <div class="bottom-panel">
+            <div class="flower-scroll" id="flowerScroll"></div>
+            <div class="controls">
+                <button class="btn-circle" onclick="resetAll()">✕</button>
+                <button class="btn-main" onclick="capturePhoto()">ЗБЕРЕГТИ ФОТО</button>
+                <button class="btn-circle" onclick="location.reload()">🔄</button>
+            </div>
+        </div>
     </div>
-    <div class="bottom-panel">
-      <div class="flower-scroll" id="flowerScroll"></div>
-      <div class="controls">
-        <button class="btn-circle" onclick="alert('Скануй QR-коди!')">❓</button>
-        <button class="btn-main" id="wreathBtn">ПРИМІРЯТИ ВІНОК</button>
-        <button class="btn-circle" id="captureBtn">📸</button>
-      </div>
-    </div>
-  </div>
 </div>
 
-<script type="module">
-  import * as THREE from 'three';
-  import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
-  const FLOWERS = [
-    { id: 1, name: 'Шафран' }, { id: 2, name: 'Нарцис' }, { id: 3, name: 'Тюльпан' },
-    { id: 4, name: 'Горицвіт' }, { id: 5, name: 'Півники' }, { id: 6, name: 'Сон-трава' },
-    { id: 7, name: 'Дзвоники' }, { id: 8, name: 'Тирлич' }, { id: 9, name: 'Айстра' },
-    { id: 10, name: 'Фіалка' }, { id: 11, name: 'Підсніжник' }, { id: 12, name: 'Черевички' }
-  ];
+<script>
+    const FLOWERS = [
+        { id: 1, name: 'Шафран' }, { id: 2, name: 'Нарцис' }, { id: 3, name: 'Тюльпан' },
+        { id: 4, name: 'Горицвіт' }, { id: 5, name: 'Півники' }, { id: 6, name: 'Сон-трава' },
+        { id: 7, name: 'Дзвоники' }, { id: 8, name: 'Тирлич' }, { id: 9, name: 'Айстра' },
+        { id: 10, name: 'Фіалка' }, { id: 11, name: 'Підсніжник' }, { id: 12, name: 'Черевички' }
+    ];
 
-  let foundFlowers = JSON.parse(localStorage.getItem('smartlessa_found') || '[]');
-  let currentFacingMode = 'environment';
-  let faceLandmarker, renderer, scene, camera3D, wreathGroup;
-  
-  const video = document.getElementById('videoElement');
-  const canvas = document.getElementById('outputCanvas');
-  const ctx = canvas.getContext('2d');
+    let state = {
+        found: JSON.parse(localStorage.getItem('smartlessa_found') || '[]'),
+        smile: 0,
+        imgs: {}
+    };
 
-  // Ініціалізація UI Гербарію
-  function updateUI() {
-    const scroll = document.getElementById('flowerScroll');
-    scroll.innerHTML = '';
+    const canvas = document.getElementById('outputCanvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('videoElement');
+
+    // Завантаження картинок
     FLOWERS.forEach(f => {
-      const isFound = foundFlowers.includes(f.id);
-      const div = document.createElement('div');
-      div.className = `item-card ${isFound ? 'found' : ''}`;
-      div.innerHTML = `<img src="flower_${f.id}.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>🌸</text></svg>'">`;
-      scroll.appendChild(div);
+        const img = new Image();
+        img.src = `flower_${f.id}.png`;
+        state.imgs[f.id] = img;
     });
-    document.getElementById('counter').textContent = `${foundFlowers.length} / 12`;
-  }
 
-  // Камера
-  async function setupCamera() {
-    if (window.stream) window.stream.getTracks().forEach(t => t.stop());
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: currentFacingMode, width: 640, height: 480 }
-    });
-    window.stream = stream;
-    video.srcObject = stream;
-    return new Promise(resolve => video.onloadedmetadata = resolve);
-  }
+    // Ефект Scrambler
+    function runGlitch() {
+        const el = document.getElementById('glitchLogo');
+        const txt = "SMARTLESSA";
+        const chars = "ᛋᛗᚨᚱᛏᛚᛖᛋᛋᚨ◈✙";
+        let iter = 0;
+        const int = setInterval(() => {
+            el.innerText = txt.split("").map((l, i) => i < iter ? txt[i] : chars[Math.floor(Math.random()*chars.length)]).join("");
+            if(iter >= txt.length) clearInterval(int);
+            iter += 1/3;
+        }, 50);
+    }
+    setInterval(runGlitch, 4000);
 
-  // Three.js Віночок (Ваш запит: Використання PNG)
-  function initWreath() {
-    if (renderer) return;
-    renderer = new THREE.WebGLRenderer({ alpha: true, canvas: document.createElement('canvas'), antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '0'; renderer.domElement.style.zIndex = '20'; renderer.domElement.style.pointerEvents = 'none';
-    document.querySelector('.ar-viewport').appendChild(renderer.domElement);
+    function updateUI() {
+        const scroll = document.getElementById('flowerScroll');
+        scroll.innerHTML = '';
+        FLOWERS.forEach(f => {
+            const isFound = state.found.includes(f.id);
+            const card = document.createElement('div');
+            card.className = `item-card ${isFound ? 'found' : ''}`;
+            card.innerHTML = `<img src="flower_${f.id}.png">`;
+            // Для тесту: клік на картку "знаходить" квітку
+            card.onclick = () => {
+                if(!state.found.includes(f.id)) {
+                    state.found.push(f.id);
+                    localStorage.setItem('smartlessa_found', JSON.stringify(state.found));
+                    updateUI();
+                }
+            };
+            scroll.appendChild(card);
+        });
+        document.getElementById('counter').innerText = `${state.found.length} / 12`;
+    }
 
-    scene = new THREE.Scene();
-    camera3D = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-    wreathGroup = new THREE.Group();
-
-    const loader = new THREE.TextureLoader();
-    foundFlowers.forEach((id, index) => {
-      loader.load(`flower_${id}.png`, (texture) => {
-        const material = new THREE.SpriteMaterial({ map: texture });
-        const sprite = new THREE.Sprite(material);
-        const angle = (index / foundFlowers.length) * Math.PI * 2;
-        sprite.position.set(Math.cos(angle) * 0.7, Math.sin(angle) * 0.2 + 0.35, 0);
-        sprite.scale.set(0.5, 0.5, 1);
-        wreathGroup.add(sprite);
-      });
-    });
-    scene.add(wreathGroup);
-  }
-
-  // Головний цикл
-  function process() {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Відображення відео (з дзеркалом для селфі)
-    ctx.save();
-    if (currentFacingMode === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    // Сканування QR (тільки основна камера)
-    if (currentFacingMode === 'environment') {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = window.jsQR(imageData.data, imageData.width, imageData.height);
-      if (code && code.data.includes('SMARTLESSA_FLOWER_')) {
-        const id = parseInt(code.data.split('_')[2]);
-        if (id && !foundFlowers.includes(id)) {
-          foundFlowers.push(id);
-          localStorage.setItem('smartlessa_found', JSON.stringify(foundFlowers));
-          showPopup(`Знайдено: ${FLOWERS[id-1].name}`);
-          updateUI();
+    window.resetAll = () => {
+        if(confirm("Очистити гербарій?")) {
+            state.found = [];
+            localStorage.removeItem('smartlessa_found');
+            updateUI();
         }
-      }
+    };
+
+    async function startAR() {
+        const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+        faceMesh.setOptions({refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5});
+        faceMesh.onResults(onResults);
+
+        new Camera(video, {
+            onFrame: async () => {
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                await faceMesh.send({image: video});
+            },
+            width: 1280, height: 720
+        }).start();
     }
 
-    // AR Логіка (тільки селфі камера)
-    if (currentFacingMode === 'user' && faceLandmarker && wreathGroup) {
-      const results = faceLandmarker.detectForVideo(video, performance.now());
-      if (results.faceLandmarks?.[0]) {
-        const p = results.faceLandmarks[0][10]; // Лоб
-        wreathGroup.position.set((p.x - 0.5) * -4, -(p.y - 0.4) * 4, -p.z * 5);
-      }
+    function onResults(results) {
+        ctx.save();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+        if (results.multiFaceLandmarks?.[0]) {
+            const l = results.multiFaceLandmarks[0];
+            
+            // Розрахунок посмішки
+            const dist = Math.hypot(l[61].x - l[291].x, l[61].y - l[291].y);
+            state.smile = Math.max(0, (dist - 0.07) * 12);
+
+            // Малюємо стрічки, якщо є квіти + посмішка
+            if(state.found.length > 0 && state.smile > 0.5) {
+                drawRibbons(l);
+            }
+            drawWreath(l);
+        }
+        ctx.restore();
     }
 
-    if (renderer) renderer.render(scene, camera3D);
-    requestAnimationFrame(process);
-  }
+    function drawRibbons(l) {
+        const left = l[234], right = l[454];
+        const wave = Math.sin(Date.now()/200)*30;
+        ctx.save();
+        ctx.lineWidth = canvas.width * 0.04;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = Math.min(state.smile, 0.8);
 
-  function showPopup(txt) {
-    const p = document.getElementById('flowerNamePopup');
-    p.textContent = txt; p.classList.add('show');
-    setTimeout(() => p.classList.remove('show'), 2000);
-  }
+        const drawSide = (p, side) => {
+            const sx = p.x * canvas.width, sy = p.y * canvas.height + 40;
+            const ex = side === 'l' ? canvas.width * 0.1 : canvas.width * 0.9;
+            ctx.strokeStyle = side === 'l' ? '#0057b7' : '#ffd700';
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.bezierCurveTo(sx + wave, sy + 200, ex - wave, canvas.height, ex, canvas.height);
+            ctx.stroke();
+        };
+        drawSide(left, 'l'); drawSide(right, 'r');
+        ctx.restore();
+    }
 
-  // Кнопки
-  document.getElementById('startBtn').onclick = async () => {
-    document.getElementById('welcome').classList.add('hidden');
-    await setupCamera();
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
-      runningMode: "VIDEO"
-    });
-    updateUI(); process();
-  };
+    function drawWreath(l) {
+        const p0 = { x: l[103].x * canvas.width, y: l[103].y * canvas.height };
+        const p2 = { x: l[332].x * canvas.width, y: l[332].y * canvas.height };
+        const headW = Math.abs(p2.x - p0.x);
+        const p1 = { x: (p0.x + p2.x)/2, y: (l[10].y * canvas.height) - (headW * 0.7) };
 
-  document.getElementById('switchCam').onclick = async () => {
-    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-    await setupCamera();
-    if (currentFacingMode === 'user') initWreath();
-  };
+        state.found.forEach((id, i) => {
+            const t = state.found.length === 1 ? 0.5 : i / (state.found.length - 1);
+            const mt = 1-t;
+            const x = mt*mt*p0.x + 2*mt*t*p1.x + t*t*p2.x;
+            const y = mt*mt*p0.y + 2*mt*t*p1.y + t*t*p2.y;
+            
+            const s = (headW * 0.3) * (1 + state.smile * 0.2);
+            const img = state.imgs[id];
+            if(img && img.complete) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.drawImage(img, -s/2, -s/2, s, s);
+                ctx.restore();
+            }
+        });
+    }
 
-  document.getElementById('wreathBtn').onclick = async () => {
-    if (foundFlowers.length === 0) return alert("Спочатку знайди квіти!");
-    currentFacingMode = 'user';
-    await setupCamera();
-    initWreath();
-  };
+    window.capturePhoto = () => {
+        const link = document.createElement('a');
+        link.download = 'smartlessa_ar.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    };
 
-  document.getElementById('captureBtn').onclick = () => {
-    const link = document.createElement('a');
-    link.download = 'ar_photo.png';
-    link.href = canvas.toDataURL();
-    link.click();
-  };
+    document.getElementById('startBtn').onclick = () => {
+        document.getElementById('welcome').classList.add('hidden');
+        startAR();
+    };
+
+    updateUI();
 </script>
 </body>
 </html>
