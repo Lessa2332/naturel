@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Vinok Quest AR · SmartLessa</title>
+  <title>SmartLessa · Квест-Вінок</title>
   <script type="importmap">
     {
       "imports": {
@@ -14,69 +14,73 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    :root { --gold: #f3cf8a; --white: #ffffff; --glass: rgba(0, 0, 0, 0.7); --gold-glow: rgba(243, 207, 138, 0.4); }
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { background: #000; font-family: system-ui, sans-serif; height: 100dvh; overflow: hidden; position: fixed; width: 100%; color: white; }
+    :root { --gold: #f3cf8a; --glass: rgba(10, 20, 10, 0.8); }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; font-family: system-ui, sans-serif; height: 100dvh; overflow: hidden; color: white; }
 
-    /* Камера та AR */
+    /* Камери */
     #videoElement, #outputCanvas { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; object-fit: cover; transform: translate(-50%, -50%); z-index: 10; }
-    #threeCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 15; pointer-events: none; }
+    #threeCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; }
 
-    /* Екран вітання */
-    .welcome-screen { position: fixed; inset: 0; z-index: 2000; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
-    .welcome-screen.hidden { opacity: 0; visibility: hidden; }
-    .logo { font-size: 3rem; font-weight: 800; color: var(--gold); letter-spacing: 4px; margin-bottom: 10px; text-shadow: 0 0 20px var(--gold-glow); }
-    .btn-start { background: none; border: 2px solid var(--gold); color: var(--gold); padding: 15px 40px; border-radius: 50px; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
+    /* UI ГРИ */
+    .game-ui { position: absolute; inset: 0; z-index: 100; display: flex; flex-direction: column; pointer-events: none; }
+    .top-panel { padding: 40px 20px; display: flex; justify-content: space-between; pointer-events: auto; }
+    .status-badge { background: var(--glass); padding: 10px 20px; border-radius: 30px; border: 1px solid var(--gold); backdrop-filter: blur(10px); }
 
-    /* UI Панелі */
-    .top-bar { position: absolute; top: 20px; left: 20px; right: 20px; z-index: 100; display: flex; justify-content: space-between; align-items: flex-start; }
-    .counter { background: var(--glass); padding: 10px 20px; border-radius: 30px; border: 1px solid var(--gold); backdrop-filter: blur(10px); }
-
-    .bottom-nav { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px; z-index: 100; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); }
-    .flower-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 15px; scrollbar-width: none; }
+    .bottom-panel { margin-top: auto; padding: 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); pointer-events: auto; }
     
-    .item-card { 
-        min-width: 75px; height: 90px; background: var(--glass); border-radius: 20px; 
-        border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; 
-        align-items: center; justify-content: center; opacity: 0.4; filter: grayscale(1); transition: 0.4s;
+    /* Кнопка переходу до маски */
+    #wreathModeBtn { 
+        display: none; width: 100%; background: var(--gold); color: #000; 
+        padding: 18px; border-radius: 20px; font-weight: 800; border: none;
+        margin-bottom: 15px; box-shadow: 0 0 20px rgba(243, 207, 138, 0.5);
+        animation: pulse 2s infinite; cursor: pointer;
     }
-    .item-card.unlocked { opacity: 1; filter: grayscale(0); border-color: var(--gold); }
-    .item-card img { width: 45px; height: 45px; }
-    .item-card span { font-size: 9px; color: var(--gold); margin-top: 5px; text-transform: uppercase; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
 
-    .scanner-frame { position: fixed; inset: 20%; border: 2px solid var(--gold); border-radius: 20px; z-index: 50; display: none; pointer-events: none; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
-    .scanner-frame.active { display: block; animation: scanAnim 2s infinite ease-in-out; }
+    /* Список квітів */
+    .flower-grid { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+    .flower-item { 
+        min-width: 70px; height: 85px; background: rgba(255,255,255,0.1); 
+        border-radius: 15px; display: flex; flex-direction: column; align-items: center; 
+        justify-content: center; opacity: 0.3; filter: grayscale(1); transition: 0.4s;
+    }
+    .flower-item.unlocked { opacity: 1; filter: grayscale(0); border: 1px solid var(--gold); background: var(--glass); }
+    .flower-item.selected { background: var(--gold); }
+    .flower-item.selected span { color: #000; }
+    .flower-item img { width: 40px; height: 40px; }
+    .flower-item span { font-size: 8px; margin-top: 5px; color: var(--gold); font-weight: bold; }
 
-    @keyframes scanAnim { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.02); } }
-    
-    #msg { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: var(--gold); color: #000; padding: 20px; border-radius: 20px; font-weight: bold; display: none; box-shadow: 0 0 30px var(--gold-glow); }
+    /* Сканер */
+    .scan-box { 
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 250px; height: 250px; border: 2px solid var(--gold); border-radius: 30px;
+        display: flex; align-items: center; justify-content: center; opacity: 0.5;
+    }
+    .scan-box::after { content: "СКАНУЙ QR"; font-size: 12px; letter-spacing: 2px; color: var(--gold); }
+
+    #msg { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); background: var(--gold); color: #000; padding: 15px 30px; border-radius: 50px; font-weight: bold; display: none; z-index: 1000; }
   </style>
 </head>
 <body>
 
-<div class="welcome-screen" id="welcome">
-    <div class="logo">SMARTLESSA</div>
-    <div style="margin-bottom: 30px; color: #ccc;">AR-Квест: Знайди 12 заповідних квітів</div>
-    <button class="btn-start" onclick="initApp()">ПОЧАТИ ПРИГОДУ</button>
-</div>
+<div id="msg">НОВА КВІТКА У ГЕРБАРІЇ! 🌸</div>
 
-<div class="top-bar">
-    <div class="counter" id="countLabel">Знайдено: 0/12</div>
-    <button onclick="toggleScanner()" id="scanBtn" style="background:var(--gold); border:none; padding:10px 20px; border-radius:20px; font-weight:bold;">📷 СКАНУВАТИ QR</button>
-</div>
-
-<div class="scanner-frame" id="frame"></div>
-<div id="msg">КВІТКУ ЗНАЙДЕНО! 🌸</div>
-
-<video id="videoElement" autoplay playsinline muted style="opacity:0;"></video>
+<video id="videoElement" autoplay playsinline muted></video>
 <canvas id="outputCanvas"></canvas>
 <div id="threeCanvas"></div>
 
-<div class="bottom-nav">
-    <div class="flower-scroll" id="flowerScroll"></div>
-    <div style="display:flex; gap:10px;">
-        <button onclick="resetWreath()" style="flex:1; background:rgba(255,0,0,0.3); border:1px solid red; color:white; padding:15px; border-radius:15px;">СКИНИТИ ВІНОК</button>
-        <button onclick="savePhoto()" style="flex:2; background:#fff; border:none; padding:15px; border-radius:15px; font-weight:bold; color:#000;">ЗБЕРЕГТИ ФОТО</button>
+<div class="game-ui">
+    <div class="top-panel">
+        <div class="status-badge" id="counter">Знайдено: 0</div>
+        <div class="status-badge" id="modeName">РЕЖИМ: ПОШУК</div>
+    </div>
+
+    <div class="scan-box" id="scannerVisual"></div>
+
+    <div class="bottom-panel">
+        <button id="wreathModeBtn" onclick="switchToWreathMode()">СПЛЕСТИ ВІНОК 🌿</button>
+        <div class="flower-grid" id="flowerGrid"></div>
     </div>
 </div>
 
@@ -84,172 +88,151 @@
     import * as THREE from 'three';
     import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 
-    const FLOWERS = [
-        { id: 1, name: 'Шафран', src: 'flower_1.png', code: 'flower_001' },
-        { id: 2, name: 'Нарцис', src: 'flower_2.png', code: 'flower_002' },
-        { id: 3, name: 'Тюльпан', src: 'flower_3.png', code: 'flower_003' },
-        { id: 4, name: 'Горицвіт', src: 'flower_4.png', code: 'flower_004' }
-        // Додайте решту 12-15 квітів за аналогією
+    const FLOWERS_DB = [
+        { id: 1, name: 'Шафран', src: 'flower_1.png', code: 'SL_01' },
+        { id: 2, name: 'Нарцис', src: 'flower_2.png', code: 'SL_02' },
+        { id: 3, name: 'Тюльпан', src: 'flower_3.png', code: 'SL_03' },
+        { id: 4, name: 'Сон-трава', src: 'flower_4.png', code: 'SL_04' },
+        { id: 5, name: 'Півники', src: 'flower_5.png', code: 'SL_05' },
+        { id: 6, name: 'Дзвоники', src: 'flower_6.png', code: 'SL_06' }
     ];
 
     let state = {
-        found: JSON.parse(localStorage.getItem('sl_found') || '[]'),
+        found: [],
         selected: [],
-        isScanning: false,
-        facingMode: 'user'
+        mode: 'SCAN', // 'SCAN' або 'WREATH'
+        stream: null
     };
 
     let video, canvas, ctx, faceLandmarker, renderer, scene, camera3D, wreathGroup;
 
-    window.initApp = async () => {
-        document.getElementById('welcome').classList.add('hidden');
+    async function init() {
         video = document.getElementById('videoElement');
         canvas = document.getElementById('outputCanvas');
         ctx = canvas.getContext('2d');
 
-        await setupCamera();
-        await initMediaPipe();
+        await startCamera('environment');
         initThree();
-        renderLoop();
         updateUI();
-    };
+        requestAnimationFrame(gameLoop);
+    }
 
-    async function setupCamera() {
+    async function startCamera(mode) {
+        if (state.stream) state.stream.getTracks().forEach(t => t.stop());
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: state.facingMode, width: 1280, height: 720 }
+            video: { facingMode: mode, width: 1280, height: 720 }
         });
+        state.stream = stream;
         video.srcObject = stream;
+        
+        // Віддзеркалення тільки для фронталки
+        video.style.transform = mode === 'user' ? 'translate(-50%, -50%) scaleX(-1)' : 'translate(-50%, -50%) scaleX(1)';
         return new Promise(r => video.onloadedmetadata = r);
     }
 
-    async function initMediaPipe() {
-        const filesetResolver = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
-            runningMode: "VIDEO", numFaces: 1
-        });
-    }
-
     function initThree() {
-        const container = document.getElementById('threeCanvas');
         renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        container.appendChild(renderer.domElement);
-
+        document.getElementById('threeCanvas').appendChild(renderer.domElement);
         scene = new THREE.Scene();
         camera3D = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         wreathGroup = new THREE.Group();
         scene.add(wreathGroup);
-        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+        scene.add(new THREE.AmbientLight(0xffffff, 2));
     }
 
-    window.toggleScanner = () => {
-        state.isScanning = !state.isScanning;
-        state.facingMode = state.isScanning ? 'environment' : 'user';
-        setupCamera();
-        document.getElementById('frame').classList.toggle('active', state.isScanning);
-        document.getElementById('scanBtn').textContent = state.isScanning ? "ЗАКРИТИ" : "📷 СКАНУВАТИ QR";
+    window.switchToWreathMode = async () => {
+        state.mode = 'WREATH';
+        document.getElementById('scannerVisual').style.display = 'none';
+        document.getElementById('wreathModeBtn').style.display = 'none';
+        document.getElementById('modeName').textContent = 'РЕЖИМ: ПРИМІРКА';
+        
+        await startCamera('user');
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+            baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate: "GPU" },
+            runningMode: "VIDEO"
+        });
     };
 
     function updateUI() {
-        const scroll = document.getElementById('flowerScroll');
-        scroll.innerHTML = '';
-        FLOWERS.forEach(f => {
-            const isUnlocked = state.found.includes(f.id);
-            const card = document.createElement('div');
-            card.className = `item-card ${isUnlocked ? 'unlocked' : ''}`;
-            card.innerHTML = `<img src="${f.src}"><span>${f.name}</span>`;
-            card.onclick = () => isUnlocked && toggleFlowerInWreath(f.id);
-            scroll.appendChild(card);
+        const grid = document.getElementById('flowerGrid');
+        grid.innerHTML = '';
+        FLOWERS_DB.forEach(f => {
+            const isFound = state.found.includes(f.id);
+            const isSel = state.selected.includes(f.id);
+            const item = document.createElement('div');
+            item.className = `flower-item ${isFound ? 'unlocked' : ''} ${isSel ? 'selected' : ''}`;
+            item.innerHTML = `<img src="${f.src}"><span>${f.name}</span>`;
+            
+            item.onclick = () => {
+                if (state.mode === 'WREATH' && isFound) {
+                    toggleFlower(f.id);
+                }
+            };
+            grid.appendChild(item);
         });
-        document.getElementById('countLabel').textContent = `Знайдено: ${state.found.length}/12`;
+        document.getElementById('counter').textContent = `Знайдено: ${state.found.length}`;
+        if (state.found.length > 0 && state.mode === 'SCAN') {
+            document.getElementById('wreathModeBtn').style.display = 'block';
+        }
     }
 
-    function toggleFlowerInWreath(id) {
+    function toggleFlower(id) {
         const idx = state.selected.indexOf(id);
         if (idx > -1) state.selected.splice(idx, 1);
-        else if (state.selected.length < 12) state.selected.push(id);
-        updateWreath3D();
+        else state.selected.push(id);
+        updateWreathModel();
+        updateUI();
     }
 
-    function updateWreath3D() {
+    function updateWreathModel() {
         while(wreathGroup.children.length) wreathGroup.remove(wreathGroup.children[0]);
         state.selected.forEach((id, i) => {
-            const flower = FLOWERS.find(f => f.id === id);
-            const tex = new THREE.TextureLoader().load(flower.src);
-            const mat = new THREE.SpriteMaterial({ map: tex });
-            const sprite = new THREE.Sprite(mat);
-            
+            const f = FLOWERS_DB.find(x => x.id === id);
+            const map = new THREE.TextureLoader().load(f.src);
+            const mat = new THREE.SpriteMaterial({ map });
+            const s = new THREE.Sprite(mat);
             const angle = (i / state.selected.length) * Math.PI * 2;
-            sprite.position.set(Math.cos(angle) * 0.8, Math.sin(angle) * 0.2 + 0.5, 0);
-            sprite.scale.set(0.4, 0.4, 1);
-            wreathGroup.add(sprite);
+            s.position.set(Math.cos(angle) * 0.7, Math.sin(angle) * 0.2 + 0.5, 0);
+            s.scale.set(0.4, 0.4, 1);
+            wreathGroup.add(s);
         });
     }
 
-    function checkQR() {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imgData.data, imgData.width, imgData.height);
-        if (code) {
-            const flower = FLOWERS.find(f => f.code === code.data);
-            if (flower && !state.found.includes(flower.id)) {
-                state.found.push(flower.id);
-                localStorage.setItem('sl_found', JSON.stringify(state.found));
-                showFoundMsg();
-                updateUI();
-                if(navigator.vibrate) navigator.vibrate(200);
-            }
-        }
-    }
-
-    function showFoundMsg() {
-        const m = document.getElementById('msg');
-        m.style.display = 'block';
-        setTimeout(() => m.style.display = 'none', 2000);
-    }
-
-    function renderLoop() {
+    function gameLoop() {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
-        ctx.save();
-        if (state.facingMode === 'user') {
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-        }
-        ctx.drawImage(video, 0, 0);
-        ctx.restore();
 
-        if (state.isScanning) checkQR();
-
-        if (faceLandmarker && video.readyState >= 2) {
-            const results = faceLandmarker.detectForVideo(video, performance.now());
-            if (results.faceLandmarks?.[0]) {
-                const landmarks = results.faceLandmarks[0];
-                const head = landmarks[10]; // Чоло
+        if (state.mode === 'SCAN') {
+            ctx.drawImage(video, 0, 0);
+            const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const qr = jsQR(data.data, data.width, data.height);
+            if (qr) {
+                const flower = FLOWERS_DB.find(f => f.code === qr.data);
+                if (flower && !state.found.includes(flower.id)) {
+                    state.found.push(flower.id);
+                    document.getElementById('msg').style.display = 'block';
+                    setTimeout(() => document.getElementById('msg').style.display = 'none', 2000);
+                    updateUI();
+                    if(navigator.vibrate) navigator.vibrate(100);
+                }
+            }
+        } else if (state.mode === 'WREATH' && faceLandmarker) {
+            const res = faceLandmarker.detectForVideo(video, performance.now());
+            if (res.faceLandmarks?.[0]) {
+                const head = res.faceLandmarks[0][10];
+                // Коригуємо позицію для віддзеркаленої камери
                 wreathGroup.position.set((0.5 - head.x) * 3, (0.5 - head.y) * 3, -head.z * 2);
                 wreathGroup.visible = true;
-            } else {
-                wreathGroup.visible = false;
-            }
+            } else wreathGroup.visible = false;
         }
 
         renderer.render(scene, camera3D);
-        requestAnimationFrame(renderLoop);
+        requestAnimationFrame(gameLoop);
     }
 
-    window.savePhoto = () => {
-        const link = document.createElement('a');
-        link.download = 'my-vinok.png';
-        link.href = canvas.toDataURL();
-        link.click();
-    };
-
-    window.resetWreath = () => {
-        state.selected = [];
-        updateWreath3D();
-    };
+    init();
 </script>
 </body>
 </html>
