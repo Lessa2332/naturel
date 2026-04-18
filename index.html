@@ -133,37 +133,183 @@
     document.getElementById('flowerCounter').textContent = `${foundFlowers.length} / 12`;
   }
 
-  // Налаштування 3D
+// --- Налаштування 3D ---
   function init3D() {
-    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.domElement.style.position = 'absolute';
-    renderer.domElement.style.top = '0';
-    renderer.domElement.style.zIndex = '15';
-    renderer.domElement.style.pointerEvents = 'none';
-    document.querySelector('.ar-viewport').appendChild(renderer.domElement);
+    // Якщо рендерер вже існує, не створюємо новий, а просто чистимо сцену
+    if (!renderer) {
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.domElement.style.position = 'absolute';
+      renderer.domElement.style.top = '0';
+      renderer.domElement.style.zIndex = '15';
+      renderer.domElement.style.pointerEvents = 'none';
+      document.querySelector('.ar-viewport').appendChild(renderer.domElement);
+      scene = new THREE.Scene();
+      camera3D = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    }
 
-    scene = new THREE.Scene();
-    camera3D = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    // Очищуємо стару групу вінка перед створенням нової
+    if (wreathGroup) scene.remove(wreathGroup);
+    
     wreathGroup = new THREE.Group();
     scene.add(wreathGroup);
     
-    // Створення вінка (спрайти)
+    // Створення вінка
+    const flowerCount = foundFlowers.length;
     foundFlowers.forEach((id, i) => {
       const canvasT = document.createElement('canvas');
       canvasT.width = 128; canvasT.height = 128;
       const c = canvasT.getContext('2d');
-      c.fillStyle = '#c9a23d'; c.beginPath(); c.arc(64, 64, 60, 0, Math.PI*2); c.fill();
-      c.fillStyle = 'white'; c.font = '80px serif'; c.textAlign = 'center'; c.fillText('🌸', 64, 90);
+      c.fillStyle = 'rgba(255,255,255,0)'; c.fillRect(0,0,128,128);
+      c.fillStyle = 'white'; c.font = '90px serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('🌸', 64, 64); // Тут можна замінити на реальні картинки за id
       
       const texture = new THREE.CanvasTexture(canvasT);
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
-      const angle = (i / foundFlowers.length) * Math.PI * 2;
-      sprite.position.set(Math.cos(angle) * 0.8, Math.sin(angle) * 0.2 + 0.1, 0);
-      sprite.scale.set(0.5, 0.5, 1);
+      const angle = (i / flowerCount) * Math.PI * 2;
+      const radius = 0.8;
+      sprite.position.set(Math.cos(angle) * radius, Math.sin(angle) * 0.25 + 0.2, 0);
+      sprite.scale.set(0.6, 0.6, 1);
       wreathGroup.add(sprite);
     });
+
+    // ДОДАЄМО ПАТРІОТИЧНІ СТРІЧКИ (спочатку приховані)
+    const ribbonCanvas = document.createElement('canvas');
+    ribbonCanvas.width = 64; ribbonCanvas.height = 256;
+    const rc = ribbonCanvas.getContext('2d');
+    const grad = rc.createLinearGradient(0,0,0,256);
+    grad.addColorStop(0, '#0057b7'); grad.addColorStop(0.5, '#0057b7'); // Синій
+    grad.addColorStop(0.5, '#ffd700'); grad.addColorStop(1, '#ffd700'); // Жовтий
+    rc.fillStyle = grad; rc.fillRect(0,0,64,256);
+    
+    const ribbonTex = new THREE.CanvasTexture(ribbonCanvas);
+    const createRibbon = (x) => {
+      const rib = new THREE.Sprite(new THREE.SpriteMaterial({ map: ribbonTex, transparent: true, opacity: 0 }));
+      rib.position.set(x, -0.8, -0.1);
+      rib.scale.set(0.4, 1.2, 1);
+      rib.name = "ribbon";
+      return rib;
+    };
+    
+    wreathGroup.add(createRibbon(-0.5));
+    wreathGroup.add(createRibbon(0.5));
   }
+
+  // --- Головний цикл ---
+  function loop() {
+    if (video.readyState >= 2) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      ctx.save();
+      if (currentMode === 'user') {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0);
+      ctx.restore();
+
+      if (currentMode === 'environment') {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, canvas.width, canvas.height);
+        if (code && code.data.startsWith('SMARTLESSA_FLOWER_')) {
+          const id = parseInt(code.data.split('_')[2]);
+          if (id && !foundFlowers.includes(id)) {
+            foundFlowers.push(id);
+            localStorage.setItem('smartlessa_found', JSON.stringify(foundFlowers));
+            document.getElementById('addSound').play();
+            showToast(`Знайдено: ${FLOWERS[id-1].name}! 🌼`);
+            updateList();
+          }
+        }
+      }
+
+      if (currentMode === 'user' && faceLandmarker) {
+        const results = faceLandmarker.detectForVideo(video, performance.now());
+        if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+          const p = results.faceLandmarks[0][10]; 
+          wreathGroup.position.set((p.x - 0.5) * -4.5, -(p.y - 0.45) * 4.5, -p.z * 5);
+          
+          // Детекція посмішки через Blendshapes
+          if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+            const shapes = results.faceBlendshapes[0].categories;
+            const smileRight = shapes.find(s => s.categoryName === "smileRight").score;
+            const smileLeft = shapes.find(s => s.categoryName === "smileLeft").score;
+            const isSmiling = (smileRight + smileLeft) > 0.7; // Поріг посмішки
+
+            wreathGroup.children.forEach(child => {
+              if (child.name === "ribbon") {
+                child.material.opacity = isSmiling ? 1 : 0;
+              }
+            });
+          }
+        }
+      }
+      if (renderer) renderer.render(scene, camera3D);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  async function startCamera(mode) {
+    currentMode = mode;
+    if (window.stream) window.stream.getTracks().forEach(t => t.stop());
+    const constraints = {
+      video: { facingMode: mode, width: { ideal: 640 }, height: { ideal: 480 } }
+    };
+    window.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = window.stream;
+    if (renderer) renderer.domElement.style.display = (mode === 'user' ? 'block' : 'none');
+  }
+
+  document.getElementById('startBtn').onclick = async () => {
+    document.getElementById('welcome').classList.add('hidden');
+    await startCamera('environment');
+    
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+      baseOptions: { 
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", 
+        delegate: "GPU" 
+      },
+      outputFaceBlendshapes: true, // ВАЖЛИВО ДЛЯ ПОСМІШКИ
+      runningMode: "VIDEO"
+    });
+    
+    updateList();
+    loop();
+  };
+
+  document.getElementById('wreathBtn').onclick = () => {
+    if (foundFlowers.length < 1) {
+      showToast("Знайди хоча б одну квітку!", "red");
+    } else {
+      startCamera('user').then(() => {
+        init3D(); // Перезібрати вінок
+        showToast("Усміхнись, щоб з'явилися стрічки! 💙💛");
+      });
+    }
+  };
+
+  document.getElementById('captureBtn').onclick = () => {
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = canvas.width;
+    finalCanvas.height = canvas.height;
+    const fctx = finalCanvas.getContext('2d');
+    fctx.drawImage(canvas, 0, 0);
+    fctx.drawImage(renderer.domElement, 0, 0);
+    const link = document.createElement('a');
+    link.download = `smartlessa-wreath.png`;
+    link.href = finalCanvas.toDataURL();
+    link.click();
+  };
+
+  window.addEventListener('resize', () => {
+    if (camera3D) {
+      camera3D.aspect = window.innerWidth / window.innerHeight;
+      camera3D.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+  });
 
   // Головний цикл
   function loop() {
